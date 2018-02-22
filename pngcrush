@@ -1,0 +1,2 @@
+pngcrush image.png -rem alla -reduce -brute result.png
+

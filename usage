@@ -1,0 +1,1 @@
+du -s * 2> /dev/null | sort -n

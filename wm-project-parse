@@ -1,0 +1,35 @@
+case $1 in
+"") echo "Usage $0 [-h <svn/git home dir>] <project.xml> <local_modules>" ; exit 1;;
+esac
+
+echo "#" "$0" "$@"
+
+BC=/ext/build/build_ctrl/latest/best/src/build_ctrl
+
+homearg=~/git
+if [ "$1" == "-h" ]
+then
+  homearg=$2
+  shift 2
+fi
+
+loc=""
+proj=" --file "$1
+while shift
+do
+  if [ "$1" != "" ]
+  then
+     loc=$loc" --local "$1
+  fi
+done
+
+export WAVE_PLATFORM=ubuntu-10.04-64
+export WAVE_PLATFORM_TYPE=ubuntu
+export WAVE_PLATFORM_VERSION=10.04-64
+
+echo "#" $BC/bin/project-env.pl --home $homearg $loc $proj
+$BC/bin/project-env.pl --home $homearg $loc $proj 2>&1 \
+        | grep -v 'Use.of.uninitialized' \
+        | sed 's,tinderbuilds/20........-.....,best,' \
+        | sed 's,tinderbuilds/latest,best,' \
+        | sed 's,//,/,' 

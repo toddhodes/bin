@@ -1,0 +1,7 @@
+
+for i in "frijole1 crunkie-dev stimpy"
+do
+    GET "http://$i:8080/xda/dynamapPoiByCategory?lon=-122.287289&lat=37.844627&cat=Community.ATMs%2FBanks&max=1" 2>&1 >/dev/null
+    GET "http://$i:8080/xda/teleAtlasPoiByCategory?lon=-122.27625&lat=37.857987&cat=0&table=teleatlas_poi_2004_10&max=60" 2>&1 >/dev/null
+done
+

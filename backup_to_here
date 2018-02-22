@@ -1,0 +1,14 @@
+echo "are you sure?       (^C to exit, return to continue...)"
+read s1
+
+( cd .. ;
+echo $PWD "
+   -->" $PWD/backup ;
+#dt=`date | sed 's/ //g'` ;
+dt=`date` ;
+for i in *.c *.h Makefile
+do
+   /bin/cp $i "backup/$i.$dt"
+   gzip "backup/$i.$dt"
+done
+)

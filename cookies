@@ -1,0 +1,1 @@
+sudo tcpdump -s 10000 -A port 80 or port 8421 | egrep Set-[Cc]ookie:

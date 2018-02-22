@@ -1,0 +1,1 @@
+java -classpath ~/cvs/dyme/1.2/gem/product/source/test/build:/var/tmp/todd/dyme/1.2/gem/build/redhat-8.0/lib/me_lib_common.jar:/usr/tools/rev/j2sdk1.4.2_05/jre/lib/rt.jar GemPrinter "$@"

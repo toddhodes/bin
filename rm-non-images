@@ -1,0 +1,18 @@
+
+echo "Warning -- be fuckign careful, this does a rm -f !"
+echo "OK?"
+read
+
+echo "OK, I'm starting!"
+
+tmpfile=/tmp/.mytmp.$RANDOM
+for i in $*
+do
+  file $i > $tmpfile
+  if ! grep "(JPEG|GIF)" $tmpfile >/dev/null 2>/dev/null
+  then
+    echo "rm'ing $i"
+    rm -f $i 
+  fi
+done
+rm -f $tmpfile

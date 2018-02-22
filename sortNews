@@ -1,0 +1,40 @@
+# SortNews -- save a list of news articles to be saved in order (like, maybe if
+# they're uuencoded) to ~/News/xxx and this will generate a file that you can
+# use to generate the correct command lines to be copied (like, on a sun).
+# The new file is called ~/News/New/NUMBERS, and highlighting and copying a 
+# line at a time of it into rn will save the stuff in proper order.
+#
+# Questions, Comments, Suggestions: Todd Hodes, tdh6t@virginia.edu
+#
+sort +1 -o ~/News/New/SORTED.LIST ~/News/xxx
+awk '
+
+BEGIN { s = 0 }
+
+{
+if (NF > 1) {
+     printf("%s",$1);
+     s++;
+     if ((s%11) == 0)
+       printf(" w xxxxxxx\n");
+     else printf(",");
+     }
+}
+
+END { if ((s%11) != 0)
+       printf("- w xxxxxxx\n"); }
+
+' < ~/News/New/SORTED.LIST > ~/News/New/NUMBERS
+echo "*** Possible occurences of files with ten or more parts are noted below ***"
+echo "  These can break the sort routine -- check the file SORTED.LIST to be"
+echo "  sure it is correctly sorted if anything comes up below.  This is " 
+echo "  ALWAYS a good idea, because errors are not unheard of. "
+echo " "
+grep /[1-3][0-9] ~/News/New/SORTED.LIST
+echo " " 
+echo " Now copy each of the following lines onto the rn command line,"
+echo " one at a time:"
+echo " "
+cat ~/News/New/NUMBERS
+echo " "
+cp ~/News/New/SORTED.LIST ~/News/xxx

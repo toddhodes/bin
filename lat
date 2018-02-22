@@ -1,0 +1,19 @@
+
+MYTEX=latex
+FILE=$1
+
+case $1 in
+"-s") MYTEX=slitex ; FILE=$2 ;;
+"-2e") MYTEX=latex2e ; FILE=$2 ;;
+"") echo "Usage: $0 [-s|-2e] <filename>"; exit 1 ;;
+esac
+
+base=`basename $FILE .tex`
+
+$MYTEX $base.tex
+bibtex $base
+#$MYTEX $base.tex
+#bibtex $base
+dvips -t letter -o $base.ps $base.dvi
+###ghostview $base.ps
+#xdvi $base.dvi

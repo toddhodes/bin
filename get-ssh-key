@@ -1,0 +1,11 @@
+#!/bin/bash
+# Search for People (in 'ou=People') and non-People accounts (in 'ou=Service Keys,ou=People')
+for ou in '' 'ou=Service Keys,'
+do
+    result=$(ldapsearch \
+                -x -LLL -ZZ \
+                -H ldap://ldap-prod-child2.engr.wavemarket.com \
+                -b "uid=$1,${ou}ou=People,dc=wavemarket,dc=com" \
+                sshPublicKey 2>/dev/null)
+    echo "$result" | sed -n '/sshPublicKey/,/^$/p' | sed -e 's/sshPublicKey: //' -e 's/^ //' | tr --delete '\n' | sed 's/$/\n/'
+done

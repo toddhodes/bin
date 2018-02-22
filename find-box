@@ -1,0 +1,48 @@
+#!/usr/bin/perl -w
+
+use strict;
+use Net::LDAP;
+
+
+########################################################################
+
+
+sub unique ($$) {
+    my @values = shift->get(shift);
+    return @values == 1 ? $values[0] : undef;
+}
+
+
+########################################################################
+
+
+@ARGV or die "Usage: $0 <hostname> ...";
+my $ldap = new Net::LDAP 'ldap';
+
+
+while (my $host = shift) {
+    print "$host\n";
+    my $hosts = $ldap->search( base => 'ou=ports,o=eecs.berkeley.edu',
+			       filter => "eecsportnode=$host.*" );
+    
+    while (my $host = $hosts->pop_entry) {
+	my $node  = unique $host, 'eecsportnode';
+	my $cable = unique $host, 'eecsportcableid';
+	my $room  = unique $host, 'eecsportroom';
+	my $hall  = unique $host, 'eecsportlocation';
+	    
+	print "    $node: cable $cable in $room $hall\n";
+	my $people = $ldap->search( base => 'ou=people,o=eecs.berkeley.edu',
+				    filter => "(&(roomnumber=$room)(street=$hall))\n" );
+	
+	while (my $person = $people->pop_entry) {
+	    my $cn    = unique $person, 'cn';
+	    my $email = unique $person, 'mail';
+	    my $phone = unique $person, 'telephonenumber';
+	    print "      $cn\n";
+	    print "        <$email>\n" if defined $email;
+	    print "        $phone\n" if defined $phone;
+	}
+    }
+}
+

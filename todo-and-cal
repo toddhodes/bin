@@ -1,0 +1,18 @@
+# mails me my todo list and calendar each day, because they
+# won't give me access to crontab.
+
+#echo "file: >" $(/bin/ls -lAg ~/.todo-and-cal | awk '{print $6}') "<"
+#echo "date: >" $(date | awk '{print $3}') "<"
+
+case `uname` in
+'SunOS') dateNum=$(/bin/ls -lAg ~/.todo-and-cal | awk '{print $7}') ;;
+'HP-UX') dateNum=$(/bin/ls -lAg ~/.todo-and-cal | awk '{print $6}') ;;
+esac
+
+if [ $dateNum != $(date | awk '{print $3}') ]
+then 
+#	cat ~/todo      | elm -s "To Do list for `date`" me 
+    search-calendar | elm -s "Calendar for `date`" me 
+	touch ~/.todo-and-cal
+fi
+

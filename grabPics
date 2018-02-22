@@ -1,0 +1,44 @@
+# sNews 
+#
+set -o xtrace
+case $1 in
+'')     echo "Usage: $0 <group name>";exit ;;
+esac
+
+(echo group $1
+#
+#  .newsrc parse is not robust
+#
+ echo xhdr Subject `grep $1: ~/.newsrc|cut -d'-' -f2`-9999999 
+ sleep 4 
+ echo quit
+) | telnet murdoch.acc.virginia.edu 119 > ~/News/New/SubjectList
+
+### error in the wc parse
+lines 7,`wc -l ~/News/New/SubjectList|awk '{print $1}'` ~/News/New/SubjectList > ~/tmp/TmP
+grep -v murdoch.acc ~/tmp/TmP > ~/News/New/SubjectList
+sort +1 -o ~/News/New/SORTED.LIST ~/News/New/SubjectList
+#cat ~/News/New/SORTED.LIST
+echo ----- Still working...
+#grep /[1-3][0-9] ~/News/New/SORTED.LIST
+#echo get this list?
+#read t
+(
+ echo group $1
+ awk ' { if (NF > 1) printf("article %s\n",$1); } ' < ~/News/New/SORTED.LIST 
+#
+# This sleep should be dependant on # of lines
+#
+ sleep 1800 
+ echo quit
+) | telnet murdoch.acc.virginia.edu 119 > ~/News/New/SavedFiles
+#echo uudecode files now? 
+#read t
+### tr error !!
+#tr '' '\012' < ~/News/New/SavedFiles > ~/tmp/TmP
+#/bin/cp ~/tmp/TmP ~/News/New/SavedFiles
+gnews ~/News/New/SavedFiles
+/bin/rm ~/tmp/TmP ~/News/New/SubjectList ~/News/New/SORTED.LIST
+rm ~/News/New/SavedFiles
+echo --- Done ---
+

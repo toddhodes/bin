@@ -1,0 +1,10 @@
+echo "searching home directory..."
+
+x=$(find ~/. -name "core" -print)
+
+if [ "$x" = "" ] ; then
+	echo "no core files found"	
+else
+	echo $x
+	rm $x	
+fi

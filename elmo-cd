@@ -1,0 +1,15 @@
+
+elmo=yes
+
+case `xhost | grep elmo` in
+"") elmo=no
+    xhost +elmo ;;
+*) ;;
+esac
+
+rsh elmo "(export DISPLAY=terrorism.cs:0 ; /usr/local/bin/cdp)" &
+
+
+case $elmo in
+"no" ) sleep 1 ; xhost -elmo ;;
+esac

@@ -1,0 +1,7 @@
+while true ; do
+	if [ -f /ug0/users/tdh6t/.article ]
+	then
+		/bin/cp /ug0/users/tdh6t/.article /ug0/users/tdh6t/.article.backup 
+	fi
+	sleep 180
+done

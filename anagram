@@ -1,0 +1,48 @@
+#!/usr/sww/bin/perl
+#
+# anagram - Print a list of words that an anagram represents.
+#
+# Usage: anagram <characters>
+#
+# Run with the characters in the anagram as the argument.  For example:
+#
+#	anagram lkea
+#
+# The above invocation will produce the following output:
+#
+#	kale
+#	lake
+#	leak
+#
+# The program first sorts the characters in the anagram specified on the
+# command line (e.g., the string "lkae" becomes "aekl").  It then reads
+# each word in the dictionary, sorts the characters in the word, and
+# compares it with the sorted anagram.  Any match is printed.
+
+
+$dictionary = "/usr/dict/words";	# system dictionary - change if
+					# necessary
+
+# subroutine sortchars
+#
+# Argument is a string.  Returns a string containing the same characters
+# as the argument, but sorted.
+sub sortchars {
+	join('', sort split(//, $_[0]));
+}
+
+# Print usage message if user entered wrong number of arguments.
+chop ($progname = `basename $0`);
+die "Usage: $progname word\n" unless (@ARGV == 1);
+
+# Sort the characters in the anagram.
+$charlist = &sortchars($ARGV[0]);
+
+# Read words from dictionary and print those that can be represented by
+# the anagram.
+open(DICT, $dictionary) || die "$dictionary: $!\n";
+while (<DICT>) {
+	chop;
+	print $_, "\n" if ($charlist eq &sortchars($_));
+}
+close(DICT);

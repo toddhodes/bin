@@ -1,0 +1,2 @@
+export CVSROOT=:kserver:mash.cs.berkeley.edu:/usr/src/mash/repository
+export CVS_RSH=rsh

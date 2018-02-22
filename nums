@@ -1,0 +1,20 @@
+#!/usr/bin/perl
+
+$msg = "Usage: $0 [<start num>-]<max num>" ;
+
+$inp = $ARGV[0];
+die $msg if $inp eq '';
+
+($startN,$endN) = ($ARGV[0] =~ /([0-9]+)-([0-9]+)/);
+if ($startN eq '') {
+  $startN = 1;
+  $endN = $inp;
+}
+
+$len = length($startN);
+
+foreach ($startN .. $endN) {
+  $n = $_;
+  print "$n ";
+}
+

@@ -1,0 +1,35 @@
+case $1 in
+"") echo "Usage $0 [-h <svn/git home dir>] <project.xml> <file of modules>" ; exit 1;;
+esac
+
+echo "#" "$0" "$@"
+
+BC=~/svn/build_ctrl/trunk/build_ctrl
+
+homearg=/Users/todd/git
+if [ "$1" == "-h" ]
+then
+  homearg=$2
+  shift 2
+fi
+
+
+loc=""
+proj=" --file "$1
+
+moddeps=`cat $1 | grep module_depends_on | cut -f 2 -d \" | sort | uniq`
+for module in $moddeps; do
+   loc=$loc" --local "$module
+done
+mods=`cat $1 | grep "<module name=" | cut -f 2 -d \"`
+for module in $mods; do
+   loc=$loc" --local "$module
+done
+
+export WAVE_PLATFORM=
+export WAVE_PLATFORM_TYPE=
+export WAVE_PLATFORM_VERSION=
+
+echo "#" $BC/bin/project-env.pl --home $homearg $loc $proj
+$BC/bin/project-env.pl --home $homearg $loc $proj \
+        | sed 's,tinderbuilds/20........-.....,best,'

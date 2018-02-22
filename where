@@ -1,0 +1,3 @@
+#!/usr/uva/bin/tcsh
+
+where $1

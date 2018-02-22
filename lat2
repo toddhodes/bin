@@ -1,0 +1,10 @@
+case $1 in
+"") echo "Usage: $0 <filename with or without .tex extension>"; exit 1
+esac
+
+base=`basename $1 .tex`
+
+latex $base.tex
+#dvips -o $base.ps $base.dvi
+#gv $base.ps
+xdvi $base.dvi

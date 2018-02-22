@@ -1,0 +1,38 @@
+#!/usr/sww/bin/perl
+
+# if STDOUT is a TTY, user probably doesn't know what he's doing
+&usage if (-t STDOUT);
+# if filename is given, read from file, otherwise STDIN
+$file = $ARGV[0] || "STDIN";
+if ($file eq '-' || $#ARGV == -1) {
+    $fh = 'STDIN';
+} elsif ($#ARGV == 0) {
+    die "$file is not readable\n" unless -r $file;
+    die "$file is not an ASCII file\n" unless -T $file;
+    open(FILE, $file) or die "Opening $file: $!\n";
+    $fh = 'FILE';
+} else {
+    warn "Wrong number of args\n";
+    &usage;
+}
+# read file
+
+$first = <$fh>;
+if ($first !~ /^%!/) {
+    unlink $tmp;
+    die "$file: not PostScript (doesn't start with %!)\n";
+}
+print STDOUT $first;
+print STDOUT "%%BeginFeature: *Duplex False\nfalse statusdict \/setduplexmode get exec false statusdict \/settumble get exec\n";
+print STDOUT while <$fh>;
+exit 0;
+
+sub usage {
+        die
+q!Usage: oneside filename | lpr ....
+   or: oneside filename >filename.ps
+   or: cat filename | oneside | lpr ...
+   or: cat filename | oneside >filename.ps
+!
+       ;
+    }

@@ -1,0 +1,6 @@
+
+lynx -dump http://buffy.eecs.berkeley.edu/Seminars/ \
+	| tail +11 \
+	| grep -v http \
+	| mail -s "Seminar list for `date +%D`" hodes@cs.berkeley.edu
+

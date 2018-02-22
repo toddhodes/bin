@@ -1,0 +1,6 @@
+if [ -z "$1" ]
+then
+    echo "Usage: $0 image-files..." 1>&2
+    exit 1
+fi
+nice montage -tile 5x4 -geometry 250x240 $* all.miff

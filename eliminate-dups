@@ -1,0 +1,30 @@
+
+## broken - don't use!
+
+c=0
+for i in "$@"
+do
+  elems[$c]=$i
+  $((c=c+1))
+done
+
+#saveIFS=$IFS 
+#IFS=":" 
+
+fl=/tmp/.rmdups.$$
+
+for i in `echo $PATH | sed 's/:/ /g'`
+do
+   echo $i >> $fl 
+done
+
+for i in `cat $fl | sort | uniq`
+do
+  #set VAR to $VAR:$i
+done
+
+rm -f $fl
+
+#IFS=$saveIFS
+
+

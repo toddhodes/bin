@@ -1,0 +1,1 @@
+random `cat $HOME/goodcolors` | head -1

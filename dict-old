@@ -1,0 +1,15 @@
+#lynx -dump http://www.eb.com:180/cgi-bin/g/Dictionary?$*
+#lynx -dump gopher://next2.msci.memst.edu:9903/0default%20DEFINE%20$*
+##lynx -dump http://www.eb.com:180/cgi-bin/g?keywords=$*\&DBase=Dictionary
+
+
+lynx -dump http://www.eb.com:180/cgi-bin/g?keywords=$*\&DBase=Dictionary | \
+	awk '$1 == "_How" && $3 == "Search_" {nextfile} {print}' | \
+	awk 'NR > 5 {print}' | less -r
+
+#lynx -dump http://www.eb.com:180/cgi-bin/g?keywords=$*\&DBase=Dictionary | \
+#	awk 'BEGIN {a=-1} \
+#		$1 == "_How" && $3 == "Search_" {a=NR} \
+#		NR < a {print} \
+#		$1 == "New" && $5 == "Help" {a=99999}' | \
+#	awk 'NR > 2 {print}'

@@ -1,0 +1,59 @@
+
+
+#
+#
+#
+#
+
+
+
+echo "# this script just has notes...  read it, don't run it"
+exit 1
+
+ cd /ext/build/wallx/main/releases/1.0/src/
+ svn info * | grep Revision
+ cd -
+echo svn cp -r 39686 svn+ssh://svn/wm/project/wallx/trunk svn+ssh://svn/wm/project/wallx/tags/1.0
+echo svn cp -r 39686 svn+ssh://svn/wm/project/wallx/trunk svn+ssh://svn/wm/project/wallx/tags/AskLocalXHTML-1.0
+echo  ssh build@build "echo \"svn+ssh://svn/wm/project/wallx/tags/AskLocalXHTML-1.0\" >>  /ext/build/wallx/main/releases/1.0/TAG"
+
+ cd /ext/build/ask_backend/main/releases/1.0/src
+ svn info * | grep Revision
+ cd -
+echo svn cp -r 39693 svn+ssh://svn/wm/project/ask_backend/trunk svn+ssh://svn/wm/project/ask_backend/tags/1.0
+echo svn cp -r 39693 svn+ssh://svn/wm/project/ask_backend/trunk svn+ssh://svn/wm/project/ask_backend/tags/AskLocalXHTML-1.0
+echo  ssh build@build "echo \"svn+ssh://svn/wm/project/ask_backend/tags/AskLocalXHTML-1.0\" >>  /ext/build/ask_backend/main/releases/1.0/TAG"
+
+ cd /ext/build/iacx/main/releases/1.0/src
+ svn info * | grep Revision
+ cd -
+echo svn cp -r 39699 svn+ssh://svn/wm/project/iacx/trunk svn+ssh://svn/wm/project/iacx/tags/1.0
+echo  svn cp -r 39699 svn+ssh://svn/wm/project/iacx/trunk svn+ssh://svn/wm/project/iacx/tags/AskLocalXHTML-1.0
+echo  ssh build@build "echo \"svn+ssh://svn/wm/project/iacx/tags/AskLocalXHTML-1.0\" >>  /ext/build/iacx/main/releases/1.0/TAG"
+
+cat /ext/build/{iacx,wallx,ask_backend}}/main/releases/1.0/TAG
+
+
+
+echo BELOW THIS IS ALL WRONG
+
+case $2 in
+"") echo "usage: $0 <projectname> <tag (version)>" ; exit 1;;
+esac
+
+echo "# project = $1"
+echo "# version = $2"
+
+home=`echo $1 | tr [a-z] [A-Z]`_HOME
+
+#echo "change to dir ${!home}/.."
+#cd ${!home}/..
+
+echo
+echo "# these are the commands to run:"
+echo
+
+echo cd ${!home}/..
+echo svn copy . svn+ssh://svn/wm/project/$1/tags/$2
+echo ssh build@build "echo \"svn+ssh://svn/wm/project/$1/tags/$2\" >> /ext/build/$1/releases/$2/TAG"
+

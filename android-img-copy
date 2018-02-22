@@ -1,0 +1,16 @@
+
+case "$2" in
+"") echo "Usag: $0 <src> <dest> [filename]"; 
+    echo "src has drawable-${i}dpi folders, dest is the res dir w/ drawable-${i}dpi folders"; 
+    exit ;;
+esac
+
+src=$1
+dest=$2
+file=$3
+
+for i in xxxh xxh xh m h
+do   
+  echo cp $src/drawable-${i}dpi/* $dest/drawable-${i}dpi/$file
+  cp $src/drawable-${i}dpi/* $dest/drawable-${i}dpi/$file
+done

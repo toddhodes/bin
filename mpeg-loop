@@ -1,0 +1,8 @@
+#
+for i in $*
+do
+  echo $i
+  #mpeg $i
+  mpeg_play -dither color -loop $i > /dev/null 2>&1
+done
+

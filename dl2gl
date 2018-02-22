@@ -1,0 +1,6 @@
+for FILE in $*
+do
+   NAME=` echo $FILE | cut -d\. -f1`
+   echo "creating " $NAME.gl 
+   dltogl $FILE $NAME.gl
+done

@@ -1,0 +1,185 @@
+#! /bin/sh -x
+##
+##      Convert date to time.           DanRomikeAug94
+##
+##      Good from 1970-2009.
+##
+##      Mon Aug 15 18:45:30 PDT 1994
+##
+##      Usage: datesecs [-F<c>] [-<fn>] [mm/dd/yy|mmm dd yyyy]
+##
+##        -F<c>  --  Change default field separator.  Must come before
+##                   calling -<fn> if input is fielded differently.
+##
+##        -<fn>  --  Reads from stdin and extracts the date from the
+##                   field <fn> in the record.  Assumes space unless
+##                   the -F<c> option is called first.
+##
+##        -e <re> -  Only lines that match the regular expression via awk.
+##
+ 
+fs=' '
+ 
+[ $# = 0 ] && set "`date`"
+while [ $# -gt 0 ]
+do
+   case "$1" in
+      -e)  ##   Match regular expression ...
+         shift
+         re="$1"
+         ;;
+ 
+      -F*) ##   Change input field separator ...
+         fs=`echo "$1" | sed 's/^..//'`
+         ;;
+ 
+      -[0-9]*)
+         ##
+         ##     From stdin take from given field ...
+         [ -z "$re" ] && re=. fmt=0
+         [ -z "$fs" ] && fs=' '
+         awk -F"$fs" '
+            /'"$re"'/ {
+               print $(substr(fmt,2));
+               continue;
+            } {
+               print "<skip>" $0;
+            }
+            ' fmt="$1" -
+         ;;
+ 
+      *) ##     Just send given date
+         echo "$1"
+         ;;
+   esac
+   shift
+done |
+   awk '
+   BEGIN {
+      mon["Jan"]=++m; sum[m]=0;
+      mon["Feb"]=++m; sum[m]=31;
+      mon["Mar"]=++m; sum[m]=59;
+      mon["Apr"]=++m; sum[m]=90;
+      mon["May"]=++m; sum[m]=120;
+      mon["Jun"]=++m; sum[m]=151;
+      mon["Jul"]=++m; sum[m]=181;
+      mon["Aug"]=++m; sum[m]=212;
+      mon["Sep"]=++m; sum[m]=243;
+      mon["Oct"]=++m; sum[m]=273;
+      mon["Nov"]=++m; sum[m]=304;
+      mon["Dec"]=++m; sum[m]=334;
+      leaps[1990]=5; leaps[1991]=5;
+      leaps[1992]=6; leaps[1993]=6;
+      leaps[1994]=6; leaps[1995]=6;
+      leaps[1996]=7; leaps[1997]=7;
+      leaps[1998]=7; leaps[1999]=7;
+      leaps[2000]=8; leaps[2001]=8;
+      spring[1990]=638964000; fall[1990]=657108000;
+      spring[1991]=671018400; fall[1991]=688557600;
+      spring[1992]=702468000; fall[1992]=721216800;
+      spring[1993]=733917600; fall[1993]=752061600;
+      spring[1994]=765367200; fall[1994]=783511200;
+      spring[1995]=796816800; fall[1995]=814960800;
+      spring[1996]=828871200; fall[1996]=847620000;
+      spring[1997]=860320800; fall[1997]=877860000;
+      spring[1998]=891770400; fall[1998]=909309600;
+      spring[1999]=923220000; fall[1999]=941364000;
+   }
+ 
+   ##
+   ##   Pass through ...
+   /^<skip>/ {
+      print substr($0,7);
+      continue;
+   }
+ 
+   ##
+   ##   mmm dd yyyy
+   yr == 0 && NF == 3 && mon[$1] > 0 {
+      mn=mon[$1];
+      mday=$2;
+      yr=$3;
+      h=m=s=0;
+   }
+ 
+   ##
+   ##   mm/dd/yy
+   yr == 0 && $1 ~ /^[0-9][0-9]*[/][0-9][0-9]*[/][0-9][0-9]*/ {
+      split($1, mdy, "/");
+      mn=mdy[1];
+      mday=mdy[2];
+      if ( (yr=mdy[3]+1900) < 1970 )
+         yr+=100;
+      h=m=s=0;
+   }
+ 
+   ##
+   ##   Standard date:   Mon Aug 15 23:57:27 PDT 1994
+   yr == 0 && mon[$2] > 0 {
+      yr=$NF*1;
+      mn=mon[$2]*1;
+      mday=$3*1;
+      split($4, hms, ":");
+      h=hms[1]*1;
+      m=hms[2]*1;
+      s=hms[3]*1;
+   }
+ 
+   ##
+   ##   Load other tables if needed
+   yr > 1969 && yr < 1990 && spring[1970] == "" {
+      spring[1970]=9972000;    fall[1970]=25696800;
+      spring[1971]=41421600;   fall[1971]=57751200;
+      spring[1972]=73476000;   fall[1972]=89200800;
+      spring[1973]=104925600;  fall[1973]=120650400;
+      spring[1974]=126698400;  fall[1974]=152100000;
+      spring[1975]=162381600;  fall[1975]=183549600;
+      spring[1976]=199274400;  fall[1976]=215604000;
+      spring[1977]=230724000;  fall[1977]=247053600;
+      spring[1978]=262778400;  fall[1978]=278503200;
+      spring[1979]=294228000;  fall[1979]=309952800;
+      spring[1980]=325677600;  fall[1980]=341402400;
+      spring[1981]=357127200;  fall[1981]=372852000;
+      spring[1982]=388576800;  fall[1982]=404906400;
+      spring[1983]=420026400;  fall[1983]=436356000;
+      spring[1984]=452080800;  fall[1984]=467805600;
+      spring[1985]=483530400;  fall[1985]=499255200;
+      spring[1986]=514980000;  fall[1986]=530704800;
+      spring[1987]=544615200;  fall[1987]=562154400;
+      spring[1988]=576064800;  fall[1988]=594208800;
+      spring[1989]=607514400;  fall[1989]=625658400;
+      leaps[1970]=0; leaps[1971]=0; leaps[1972]=1;
+      leaps[1973]=1; leaps[1974]=1; leaps[1975]=1;
+      leaps[1976]=2; leaps[1977]=2; leaps[1978]=2;
+      leaps[1979]=2; leaps[1980]=3; leaps[1981]=3;
+      leaps[1982]=3; leaps[1983
+      leaps[2006]=9;  leaps[2007]=9;  leaps[2008]=10;
+      leaps[2009]=10;
+   }
+ 
+   ##
+   ##   Generate the seconds
+   yr > 0 {
+      boy=(yr-1970)*365*24*60*60 + 28800;
+      if ( mn < 3 )
+         boy+=leaps[yr-1]*24*60*60;
+      else
+         boy+=leaps[yr]*24*60*60;
+      now=boy + (sum[mn]+mday-1)*24*60*60 + h*60*60 + m*60 + s;
+      if ( now >= spring[yr] && now <= fall[yr] )
+         now-=60*60;
+      ##
+      ##        Output the date and timestamp ...
+      for(i=1; i <= NF ;i++)
+      {
+         if ( i > 1 )
+            printf(" ");
+         if ( $i != "" )
+            printf("%s", $i);
+      }
+      print " "now;
+      yr=0;
+   }
+   '
+exit 0
+

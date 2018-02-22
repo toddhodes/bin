@@ -1,0 +1,44 @@
+#!/bin/bash
+
+pushd ~/cvs/dyme/main
+
+case "$1" in
+"") echo "usage: $0 <cvs-file-name>" ; exit 1 ;;
+*) [ -f $1 ] || echo "file $1 not found" ; [ -f $1 ] || exit 1 ;;
+esac
+
+
+
+# file we care about
+fs=$1
+
+echo "updating HEAD from branch for $fs"
+echo
+
+# find current branch version
+pushd ~/cvs/dyme/1.4/
+cvs up $fs
+branch_ver=`cvs status $fs | grep Repository | awk '{print $3}'`
+ 
+# we note that this line:
+#   Repository revision: 1.19.2.1       /cvsroot/gem/produc...
+# indicates it is, in this case, 1.19.2.1
+
+# find current HEAD version
+popd
+cvs up $fs
+head_ver=`cvs status $fs | grep Repository | awk '{print $3}'`
+# status indicates it is, in this case, 1.20
+
+# apply the merge, taking us from head version to branch version
+cvs up -j$head_ver -j$branch_ver $fs
+
+# view the changes, and if ther are no conflicts, commit
+echo "showing differences from HEAD in $fs"
+cvs diff $fs
+echo "do you want to commit?  use:"
+echo "    cvs commit $fs"
+
+popd
+
+

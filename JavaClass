@@ -1,0 +1,50 @@
+#!/bin/sh
+#
+# JavaClass - figure out the Java class name for a given filename
+#
+# Uses $CLASSPATH, looking at each element and trying to match it against
+# the given filename and the current working directory.  Sample run:
+#
+# % JavaClass Acme/Utils.java
+# Acme.Utils
+# % cd Acme
+# % JavaClass Utils.java
+# Acme.Utils
+#
+# Copyright (C) 1996 by Jef Poskanzer <jef@acme.com>.  All rights reserved.
+
+if [ $# -ne 1 ] ; then
+    echo "usage:  $0 filename" >&2
+    exit 1
+fi
+
+# Get the filename.
+f="$1"
+
+# Make sure it's a full path.
+case "$f" in
+    /*)
+    ;;
+    *)
+    f="`pwd`/$f"
+    ;;
+esac
+
+# Make sure there is a CLASSPATH.
+if [ "$CLASSPATH" = "" ] ; then
+    CLASSPATH="$HOME/java"
+    export CLASSPATH
+fi
+
+# For each element in CLASSPATH
+for d in `echo $CLASSPATH | sed -e 's/:/ /g'` ; do
+    case "$f" in
+	$d*)
+	echo "$f" | sed -e "s,^$d,," -e 's,^/,,' -e 's/\.java$//' -e 's,/,.,g'
+	exit 0
+	;;
+    esac
+done
+
+echo "$0: class not found" >&2
+exit 1

@@ -1,0 +1,213 @@
+#!/bin/sh
+#
+#  Check the sanity of the security on a workstation
+#
+#	This script can be run by any user at any time to do a quick check
+#	of the security on a workstation.  The script checks for several
+#	known security holes that could be exploited to break into a system.
+#	It is highly recommended that all users run this script periodically.
+#
+#	If problems are found this script will NOT try to fix them.  It will
+#	simply list the problems it found as well as send the list to Mammoth
+#	Project system staff.
+#
+#	Craig Lant, U.C. Berkeley/Mammoth Project
+#
+#	@(#)sanityck.sh	1.10 (Berkeley) 8/31/95
+#
+
+secure_dirs="/ /dev /bin /sbin /lib /etc /usr /usr/bin /usr/sbin /usr/lib /usr/etc"
+secure_user_files=".forward .login .cshrc .logout .rhosts .profile .alias .aliases .chsrc.local .emacs .exrc .login.local .mailrc .mh_profile .tvtwmrc .twmrc .uwmrc .tiprc .vacation.msg .Xclients .xinitrc"
+tmpdirs="/tmp"
+[ -d /usr/tmp ] && tmpdirs="$tmpdirs /usr/tmp"
+[ -d /var/tmp ] && tmpdirs="$tmpdirs /var/tmp"
+[ -d /private/scr ] && tmpdirs="$tmpdirs /private/scr"  # local
+
+# what type of thing is this machine?
+systype=`uname -s`
+if [ "x$systype" = "xSunOS" ]
+then
+	uname -r | grep "^[5-9].*" >/dev/null && systype=Solaris
+fi
+
+if [ "x$1" != "x-f" ]
+then
+        case $systype
+        in
+	  OSF1)
+		hostname=`/usr/ucb/hostname`
+		ls="/usr/ucb/ls -lad"
+		interface_list="/usr/sbin/netstat -i"
+		ifconfig=/sbin/ifconfig
+		fstab=/etc/fstab
+		showmount=/usr/ucb/showmount
+		everyone="Everyone"
+		;;
+          HP-UX)
+		hostname=`/bin/hostname`
+		ls="/bin/ls -lad"
+		interface_list="/usr/bin/netstat -i"
+		ifconfig="/etc/ifconfig"
+		fstab=/etc/checklist
+		showmount=/usr/etc/showmount
+		everyone="(everyone)"
+		;;
+	  ULTRIX)
+		hostname=`/bin/hostname`
+		ls="/bin/ls -lagd"
+		interface_list="/usr/ucb/netstat -i"
+		ifconfig="/bin/ifconfig"
+		fstab=/etc/fstab
+		showmount=/etc/showmount
+		everyone="(everyone)"
+		;;
+	  SunOS|SunOS/CM)
+		hostname=`/bin/hostname`
+		ls="/bin/ls -Llagd"
+		interface_list="/usr/ucb/netstat -i"
+		ifconfig="/sbin/ifconfig"
+		fstab=/etc/fstab
+		showmount=/usr/etc/showmount
+		everyone="(everyone)"
+		;;
+	  Solaris)
+		hostname=`/usr/ucb/hostname`
+		ls="/usr/bin/ls -Llad"
+		interface_list="/usr/bin/netstat -i"
+		ifconfig="/sbin/ifconfig"
+		fstab=/etc/vfstab
+		showmount=/usr/sbin/showmount
+		everyone="(everyone)"
+		;;
+	  BSD/386)
+		hostname=`/bin/hostname`
+		ls="/bin/ls -lad"
+		interface_list="/usr/ucb/netstat -i" 
+		ifconfig="/sbin/ifconfig" 
+		fstab=/etc/fstab 
+		showmount=/usr/ucb/showmount 
+		everyone="Everyone" 
+		;;
+          *)
+                echo "This script is not designed to run on this ($systype) machine."
+                echo "If you want to run it anyway, use $0 -f"
+		exit 3
+                ;;
+        esac
+fi
+
+short_hostname="`echo $hostname | sed 's/\..*//'`"
+echo "Sanity check for $short_hostname ($systype) `date`"
+
+# setup temp file
+exitstat=0
+TEMP=/tmp/sanityck$$
+touch $TEMP
+trap 'rm -f $TEMP' 0
+
+echo "checking ownerships of important directories"
+$ls $secure_dirs 2>/dev/null | \
+	awk '$3 != "root" {printf "This directory should be owned by root\n   %s\n", $0}' >> $TEMP
+$ls $tmpdirs 2>/dev/null | \
+	awk '$1 !~ /^drwxrwxrwt/ || $3 != "root" {printf "This directory should be owned by root and should be mode 1777\n   %s\n", $0}' >> $TEMP
+test -d /etc/sm && \
+	$ls /etc/sm | \
+	awk '$1 !~ /^drwxr-sr-x/ || $3 != "root" {printf "This directory should be owned by root and should be mode 2755\n   %s\n", $0}' >> $TEMP
+test -d /etc/sm.bak && \
+	$ls /etc/sm.bak | \
+	awk '$1 !~ /^drwxr-sr-x/ || $3 != "root" {printf "This directory should be owned by root and should be mode 2755\n   %s\n", $0}' >> $TEMP
+
+echo "checking modes on important files"
+test -f /.rhosts && \
+	$ls /.rhosts | \
+	awk '$1 !~ /^-r.-------/ || $3 != "root" {printf "This file should be owned by root and should be mode 600\n   %s\n", $0}' >> $TEMP
+test -f /.klogin && \
+	$ls /.klogin | \
+	awk '$1 !~ /^-r.-------/ || $3 != "root" {printf "This file should be owned by root and should be mode 600\n   %s\n", $0}' >> $TEMP
+test -f /etc/syslog.pid && \
+	$ls /etc/syslog.pid | \
+	awk '$1 !~ /.....-..-./ {printf "This file should not be group or world writable\n   %s\n", $0}' >> $TEMP
+test -f /usr/ucb/rdist && \
+	$ls /usr/ucb/rdist | \
+	awk '$1 ~ /^-..s/ {printf "rdist should not be suid\n   %s\n", $0}' >> $TEMP
+
+echo "checking for problems in hosts.equiv"
+test -r /etc/hosts.equiv && \
+	awk '$0 == "+" {print "problem in /etc/hosts.equiv"}' \
+	    /etc/hosts.equiv >> $TEMP
+if [ "x$HOME" != "x" ]
+then
+	echo "checking for problems in $HOME"
+	test -f $HOME && \
+		$ls $HOME | \
+		awk '$1 !~ /d.......-./ {printf "Your home directory should not be world writeable\n   %s\n", $0}' >> $TEMP
+	test -f $HOME/.rhosts && \
+		awk '$0 == "+" {print "problem in $HOME/.rhosts"}' \
+		    $HOME/.rhosts >> $TEMP
+	for file in $secure_user_files
+	do
+		test -f $HOME/$file && \
+			$ls $HOME/$file | \
+			awk '$1 !~ /........-./ {printf "This file should not be world writeable\n   %s\n", $0}' >> $TEMP
+	done
+fi
+
+echo "checking for promiscuous mode"
+for i in `$interface_list | tail +2 | awk '{print $1}' | sed 's/\*//'`
+do
+	$ifconfig $i | grep "PROMISC"
+	if [ "x$systype" = "xULTRIX" ]
+	then
+		test -d /dev/pf && \
+			/usr/etc/pfconfig $i 2>/dev/null | \
+			grep "auto-promiscuous mode is enabled"
+	fi
+done >> $TEMP
+
+echo "checking for setuid imports"
+sed -e '/^#/d' \
+    -e '/nosuid/d' \
+    -e '/nfs/!d' \
+    -e '/:xx:/d' \
+    -e '/\/home/!d' \
+	$fstab | \
+awk '{printf "%s filesystem imported suid\n", $0}' >> $TEMP
+
+echo "checking for publicly exported filesystems"
+$showmount -e 2>&1 | grep $everyone >> $TEMP
+
+echo "checking for holes in passwd"
+test -f /bin/passwd && \
+	(strings /bin/passwd | grep F:) 2>&1 > /dev/null && \
+	echo "/bin/passwd is insecure" >> $TEMP
+test -f /bin/yppasswd && \
+	(strings /bin/yppasswd | grep F:) 2>&1 > /dev/null && \
+	echo "/bin/yppasswd is insecure" >> $TEMP
+
+echo "checking sendmail version"
+(echo quit; sleep 2) | \
+	telnet localhost 25 2>/dev/null | \
+	egrep ' Sendmail' | \
+	egrep -v ' Sendmail 8.([789]|6.[1-9][0-9]|[1-9][0-9])' >> $TEMP
+
+echo
+if [ -s $TEMP ]
+then
+	echo "Sanity check failed for $hostname ($systype) `date`" | \
+	cat - $TEMP | \
+	mail sanityck@orodruin.CS.Berkeley.EDU
+	echo "***************************************************************"
+	echo "Security problems were found."
+	echo "  Please contact your system administrator."
+	echo "---------------------------------------------------------------"
+	cat $TEMP
+	rm -f $TEMP
+	exitstat=1
+else
+	echo "Sanity check passed for $hostname ($systype) `date`" | \
+	mail sanityck@orodruin.CS.Berkeley.EDU
+	echo "$short_hostname looks relatively secure."
+fi
+
+exit $exitstat
+

@@ -1,0 +1,2 @@
+java -classpath ~/bin/bsh-2.0b4.jar bsh.Interpreter
+

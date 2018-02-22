@@ -1,0 +1,5 @@
+for i in "$@"
+do
+   echo $i
+   diff ../android_ring/$i ../android_ring2/$i
+done

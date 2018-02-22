@@ -1,0 +1,116 @@
+# bundle
+#
+# This shell script collects files into a single
+# package that is sent to standard output.
+# Scott Evans (gse9k)
+
+# Make sure there is something to bundle
+if [ $# -eq 0 ] ; then
+	echo "usage: ${0} filenames" 1>&2
+	exit 1
+fi
+
+# Embed a comment so target user knows how to decompose
+# the package of files
+echo '# to unbundle this file, sh this file'
+
+# Each argument to shell script should be a file
+# or directory to include in the package
+for i in "$@" ; do
+     if [ -d "${i}" ]; then
+ 	if [ ! -r "${i}" -o ! -x "${i}" ]; then
+ 		echo "${0}: permission to ${i} denied" 1>&2
+ 	else
+	  # argument is a directory, recursively call bundle
+	  echo "if [ ! -d \"${i}\" ]; then"
+	  echo "	mkdir $i"
+	  echo "fi"
+	${0} ${i}/*
+	fi
+    else	
+	if [ ! -f "${i}" ] ; then
+	  # argument isn't a file
+	echo "${0}: cannot find ${i}" 1>&2	
+    else
+    	if [ ! -r "${i}" ]; then
+    		echo "${0}: permission to ${i} denied" 1>&2
+    	else
+    	# embed a message to indicate that ${i} is in the package
+    	echo "echo ${i} 1>&2"
+    	
+    	# get the file and make it a here-document in the package
+    	echo "cat <<End | sed -e \"s/^-//\" > \"${i}\""
+    	cat "${i}" | sed -e "s/.*/-&/"
+      	echo "End"
+	
+	fi
+	fi
+	fi
+
+	if [ -r "${i}" ]; then
+    	
+    	if [ -d "${i}" -a -x "${i}" -o -f "${i}" ]; then
+    	
+        # set up a string with the file's data in it
+	LS=$( ls -ld ${i} | sed -e "s/[ 	]*//")
+	PERM=$( echo ${LS}| sed -e "s/^.\(.........\).*/\1/" )
+	
+	# preserve file permissions
+	CHMOD=$(
+        	echo ${PERM} | \
+	        sed -e "s/\(...\)\(...\)\(...\)/u=\1,g=\2,o=\3/" | \
+        	sed -e "s/-//g" \
+        	)
+
+	echo "chmod ${CHMOD} ${i}"
+
+
+
+	# this part preserves date and time
+	MONTH=$( echo ${LS} | cut -f5 -d" " )
+	MONTH=$( case ${MONTH} in
+				(Dec) echo 12 ;;
+				(Nov) echo 11 ;;
+				(Oct) echo 10 ;;
+				(Sep) echo 09 ;;
+				(Aug) echo 08 ;;
+				(Jul) echo 07 ;;
+				(Jun) echo 06 ;;
+				(May) echo 05 ;;
+				(Apr) echo 04 ;;
+				(Mar) echo 03 ;;
+				(Feb) echo 02 ;;
+				(Jan) echo 01 ;;
+			esac
+		)
+
+	DAY=$( echo ${LS} | cut -d" " -f6 | \
+		sed -e "s/^.$/0&/" )
+			
+	YEAR=$( echo ${LS} | cut -d" " -f7 | \
+		sed -e "/:/d" -e "s/..//" )
+	
+	TIME=$( echo ${LS} | cut -d" " -f7 | \
+		sed -e "/:/!d" -e "s/://" )
+	
+	TIME=$( if [ -z "${TIME}" ] ; \
+		then echo 0000; \
+		else echo $TIME; \
+		fi )
+	
+	# I used the system V version because the
+	# regular one won't let you specify the date/time
+	# to touch the file with
+	echo "/usr/5bin/touch ${MONTH}${DAY}${TIME}${YEAR} ${i}"
+
+    	fi
+    	fi
+done
+
+
+
+# indicate succesful exit
+exit 0
+
+   	
+

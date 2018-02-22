@@ -1,0 +1,18 @@
+# forge mail
+
+case $1 in
+'')	echo "Usage: forgemail <sender> <recipient> <subject> <file>.";exit ;;
+esac
+(echo mail from: $1
+ echo rcpt to: $2
+ echo data
+ echo From: $1
+ echo Message-Id: 1234567890.AB1234@satanvax.EDU
+ echo Subject: $3
+ echo To: $2
+ echo ''
+ cat $4
+ echo .
+ echo quit
+ sleep 4
+) | telnet murdoch.acc.virginia.edu 25 >/dev/null

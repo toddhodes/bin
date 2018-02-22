@@ -1,0 +1,19 @@
+#! /bin/sh
+
+if [ -z "$2" ]
+then
+    echo "Usage: lines   startline[,endline] <filename>" 1>&2
+    exit 1
+fi
+
+l=$1
+shift
+
+for i in $*
+do
+#	echo $i:
+#	sed -n ${l}p $i | more
+	sed -n ${l}p $i 
+done
+
+

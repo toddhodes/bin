@@ -1,0 +1,13 @@
+#! /bin/sh
+
+if [ -z "$1" ]
+then
+    echo "Usage: iterate <cmd> <files>" 1>&2
+    exit 1
+fi
+
+for i in $*
+do
+	$1 $i
+done
+

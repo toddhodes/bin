@@ -1,0 +1,9 @@
+nh=`wc -l /etc/hosts.equiv | cut -c6-9`
+((x=nh-1))
+#print $x
+
+for i in `tail -$x /etc/hosts.equiv`
+do
+	echo $i
+	rsh $i '`whence crontab` -l'
+done

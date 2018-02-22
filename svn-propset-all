@@ -1,0 +1,5 @@
+find -name \*.pdf -print0 | xargs -0 svn propset svn:mime-type application/pdf
+find -name \*.jpg -print0 | xargs -0 svn propset svn:mime-type image/jpeg
+find -name \*.png -print0 | xargs -0 svn propset svn:mime-type image/png
+find -name \*.html -print0 | xargs -0 svn propset svn:mime-type text/html
+

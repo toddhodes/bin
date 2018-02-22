@@ -1,0 +1,126 @@
+#!/usr/uva/bin/perl
+
+require "ctime.pl";
+
+open(YUSERS, "/users/fs8j/rtmail/yusers_current.txt") || 
+      die "Couldn't open yusers_current.txt\n";
+
+select(STDOUT);
+$| = 1;
+
+# print the last update time of YUSERS
+print "here as of: ", &ctime((stat (YUSERS))[9]);
+
+$name = $ARGV[0];
+
+open(GETUNAME, "finger $name |") ||
+	die "couldn't do finger\n";
+
+while($getnameline = <GETUNAME>) {
+	if ($getnameline =~ /Login Name:.*/i) {
+		($junk1, $junk2, $username, $rest) = split(/ /, $getnameline);
+		$username =~ s/[ 	]//g;
+		&here($username);
+  }
+}
+
+sub here {
+	local($uname);
+	$uname = @_[0];
+  print sprintf("%-8.8s ", $uname);
+   
+	seek(YUSERS, 0, 0);   
+
+  $lastTouch = 44640;     # one month of minutes
+  $fullName = "not logged on";
+  $firstMatch = 0;   
+
+  while (<YUSERS>) {
+      if (/$uname/)	 {	
+				#found this uname listed in YUSERS - split the line into
+  			# host name and users 
+	 ($host,$junk) = split(/:/, $_);
+	 $host =~ tr/ / /s;
+
+	 #Do a finger on the host
+	 open(FINGER, "finger @".$host." |") 
+	    || die "Couldn't do finger\n";
+
+	 while ($fingerLine = <FINGER>)
+	 {
+	    if ($fingerLine =~ /$uname/) 
+	    {
+	       if ($firstMatch == 0) {
+		  $fullName = substr($fingerLine, 9, 22);
+		  $firstMatch = 1;
+	       }
+
+               #calculate the idle time
+	       if (substr($fingerLine, 39, 1) eq " ") {
+		  $SGI = 1; }     #" "  in column 39 indicates an SGI
+	       else {
+		  $SGI = 0; }     #sun3 or sun4
+
+	       $idleTime = substr($fingerLine, 34+$SGI, 4);
+	       
+	       if ($idleTime =~ /d/) {
+	          $idleMinutes = substr($idleTime,0,3) * 60 * 24;
+	       }
+	       elsif ($idleTime =~ /:/) {
+		  ($hours, $minutes) = split(/:/,$idleTime);
+	          $idleMinutes = ($hours * 60) + $minutes;
+	       }
+	       else {
+		 if ($idleTime ne "    ") {
+		    $idleMinutes = $idleTime; }
+		 else {
+		    $idleMinutes = "   0"; }
+	       }
+
+
+	       # see if this shell is more recently touched
+
+	       if ($idleMinutes < $lastTouch)
+	       {
+		  $lastTouch = $idleMinutes;
+		  $minIdleTime = $idleTime;  
+		  $loginTime = substr($fingerLine, 39+$SGI, 9);
+		  $loginLocation = substr($fingerLine, 50+$SGI, 16);
+
+		  if (index($loginLocation, "ncd", 0) >= 0) { 
+		     $loginLocation = $host." NCD"; }
+		  elsif (index($loginLocation, "tcp-tac", 0) >= 0
+			 || index($loginLocation, "cisco", 0) >= 0){
+		     $loginLocation = $host." UBLAN"; }
+		  else {
+		     $loginLocation = $host; }
+	       }
+	       if ($lastTouch == 0) {
+						&PRINT_HERE_LINE();
+				 		return;
+					}
+	    }
+	 }
+ }
+}
+	&PRINT_HERE_LINE();
+}
+
+sub PRINT_HERE_LINE {
+   #Trim the " " off the variables before printing
+   $fullName =~ tr/ / /s;
+   $minIdleTime =~ tr/ / /s;
+   $loginTime =~ tr/ / /s;
+   $loginLocation =~ tr/ / /s;
+
+   print sprintf("%-18.18s ",$fullName);
+
+   if ($fullName ne "not logged on")
+   {
+      print sprintf("%5.5s min idle since %9.9s on %-16.16s",
+		    $lastTouch, $loginTime, $loginLocation);
+   }
+   print "\n";
+}	
+
+

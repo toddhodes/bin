@@ -1,0 +1,9 @@
+egrep ^[A-WYZ?] \
+	| egrep -v "status on external item" \
+	| egrep -v "^Status against revision:" \
+	| egrep -v "Fetching external item into " \
+	| egrep -v "Updated external to revision " \
+	| egrep -v "External at revision "
+
+
+

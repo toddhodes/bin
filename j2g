@@ -1,0 +1,14 @@
+echo "renaming .jpe .jpeg to .jpg :"
+for i in "$@" 
+do
+	echo $i
+	mv $i `basename $i .jpeg | basename $i .jpe | basename $i .jpg`.jpg 
+done
+echo ---
+
+echo "converting jpegs to gifs :"
+for i in "$@" 
+do
+	echo $i
+	djpeg -G -g $i  > `basename $i .jpg`.gif
+done

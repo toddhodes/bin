@@ -1,0 +1,3 @@
+eval `resize`
+stty erase 
+export DISPLAY=ren-n-stimpy.hip:0.0

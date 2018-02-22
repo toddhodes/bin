@@ -1,0 +1,47 @@
+#!/bin/sh
+
+#set -o xtrace
+
+case $1 in
+"NOW"|"u") \
+	xterm -sb -sl 1200 -title $1 -sb -bg `getColor` -e nowlogin ; 
+	exit ;;
+esac
+
+case $1 in
+"-s") \
+	xterm -sb -sl 1200 -title $2 -sb -bg `getColor` -e ssh $2 ; 
+	exit ;;
+esac
+
+tmpfile=rxterm.$RANDOM
+
+rlogin -x $1 </dev/null >/dev/null 2> /tmp/$tmpfile
+
+if [ `head -1 /tmp/$tmpfile | \
+	egrep "(ticket|failed|standard|error|Kerberos)" | cut -d" " -f1`X = X ]
+then
+	rlcmd="rlogin -x"
+else
+	rlcmd=rlogin 
+fi
+
+# provide monitoring
+echo "`date` : $rlcmd $1" >> $HOME/var/rlogin-results
+
+# --- xhost + the host, assuming it will set its display back
+xhost +$1
+
+#echo "----"
+#head -1 /tmp/$tmpfile
+#echo "----"
+
+/bin/rm /tmp/$tmpfile
+
+case $2 in
+"") xterm -sb -sl 1200 -title $1 -sb -bg `getColor` -e $rlcmd $1 ; exit ;;
+esac
+
+xterm -sb -sl 1200 -title $1 -sb -bg `getColor` -e $rlcmd -l $2 $1
+
+

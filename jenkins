@@ -1,0 +1,2 @@
+ssh -p 5858 jenkins.locationlabs.com "$@"
+

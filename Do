@@ -1,0 +1,20 @@
+#!/usr/sww/bin/perl
+
+$action = shift;
+
+if (! $action)
+{
+	print "Usage:  $0 <action> [files...]\n";
+	exit;
+}
+
+
+foreach $fn (@ARGV)
+{
+	print STDERR "**************\n";
+	print STDERR "$fn\n";
+	print STDERR "**************\n";
+	system "$action $fn";
+	print STDOUT "\n\n";
+}
+

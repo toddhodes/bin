@@ -1,0 +1,2 @@
+java -cp /ext/home/todd/src/java:/home/todd/svn/mobile_statics/trunk/statics/extern/android/android-sdk-linux/platforms/android-12/android.jar Tags >  ~/.java.tags
+

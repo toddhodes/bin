@@ -1,0 +1,49 @@
+
+case $1 in
+"") echo "Usage: $0 <jadname> <jarname>" ; 
+    echo "  or" ; 
+    echo "Usage: $0 <basename>" ; 
+    exit -1 ;;
+esac
+
+jad=$1
+jar=$2
+
+case $2 in
+"") echo "single arg -- assuming jar and jad share the same basename $1" ;
+    jad=$1.jad ;
+    jar=$1.jar ;;
+esac
+
+if [ -f $jad -a -f $jar ]
+then
+    test
+else
+    echo "file(s) do not exist" ; exit -1 ;
+fi
+
+if [ `basename $jad .jad` == $jad -a `basename $jar .jar` == $jar ]
+then
+    echo wrong extensions -- trying the reverse
+    jad=$2
+    jar=$1
+fi
+
+if [ `basename $jad .jad` == $jad -a `basename $jar .jar` == $jar ]
+then
+    echo file extentions still incorrect, exiting.
+    exit -1
+fi
+
+
+jarlen=`wc -c $jar | cut -d" " -f1`
+echo "jarlen = $jarlen"
+
+grep -v '^MIDlet-Jar-Size:' $jad > /tmp/jad$$
+echo "MIDlet-Jar-Size: $jarlen" >> /tmp/jad$$
+
+echo "backup of original .jad copied to /tmp/$jad.bk"
+cp $jad /tmp/$jad.bk
+cp /tmp/jad$$ $jad
+
+

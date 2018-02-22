@@ -1,0 +1,32 @@
+#!/usr/sww/bin/perl
+
+$SIG{'HUP'} = 'IGNORE'; $SIG{'INT'} = 'IGNORE'; $SIG{'ALRM'} = 'IGNORE';
+$SIG{'QUIT'} = 'IGNORE'; $SIG{'ILL'} = 'IGNORE'; $SIG{'TRAP'} = 'IGNORE';
+$SIG{'IOT'} = 'IGNORE'; $SIG{'EMT'} = 'IGNORE'; $SIG{'FPE'} = 'IGNORE';
+$SIG{'BUS'} = 'IGNORE'; $SIG{'SEGV'} = 'IGNORE'; $SIG{'SYS'} = 'IGNORE';
+$SIG{'PIPE'} = 'IGNORE'; $SIG{'TERM'} = 'IGNORE'; $SIG{'URG'} = 'IGNORE';
+$SIG{'STOP'} = 'IGNORE'; $SIG{'TSTP'} = 'IGNORE'; $SIG{'CONT'} = 'IGNORE';
+$SIG{'CHLD'} = 'IGNORE'; $SIG{'TTIN'} = 'IGNORE'; $SIG{'TTOU'} = 'IGNORE';
+$SIG{'IO'} = 'IGNORE'; $SIG{'XCPU'} = 'IGNORE'; $SIG{'XFSZ'} = 'IGNORE';
+$SIG{'VTALRM'} = 'IGNORE'; $SIG{'PROF'} = 'IGNORE'; $SIG{'WINCH'} = 'IGNORE';
+$SIG{'LOST'} = 'IGNORE'; $SIG{'USR1'} = 'IGNORE'; $SIG{'USR2'} = 'IGNORE';
+
+$done = 0;
+$user = $ENV{'USER'};
+print "Click.";
+system "stty -echo";
+while(!$done) {
+        $pw = <STDIN>;
+        chop($pw);
+        $pwline = `ypcat passwd | grep $user`;
+        ($login, $passwd, $remainder) = split(/:/, $pwline, 3);
+        $salt = substr($passwd, $[, 2);
+        $crypted = crypt($pw, $salt);
+        if ($crypted eq $passwd) {
+                $done++;
+        } else {
+        print ".";
+        }
+}
+system "stty echo";
+print "\nThunk.\n";

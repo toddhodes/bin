@@ -1,0 +1,18 @@
+#! /bin/sh
+
+if [ -z "$1" ]
+then
+    echo "Usage: u2l file..." 1>&2
+    exit 1
+fi
+
+for i in $*
+do
+    f=`echo $i | tr '[A-Z]' '[a-z]'`
+
+	if [ ! -r $f ]
+   	then 
+		(set -x; mv $i $f)
+	fi
+done
+

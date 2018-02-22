@@ -1,0 +1,285 @@
+#!/bin/sh
+
+mcp() {
+  mop_internal cp "$@" 
+}
+
+mmv() {
+  mop_internal mv "$@" 
+}
+
+mop_internal() {
+  operation=$1
+  shift
+  parms=$#
+  destination="${!parms}"
+  
+  mvcount=$((parms - 1))
+  parm=0
+  
+  
+  while [ $parm -lt $mvcount ]
+  do
+  	if echo "$1" | grep '^[-]' >/dev/null
+  	then
+  	   optcount=${#options[*]}
+  	   optcount=$((optcount + 1))
+  	   options[$optcount]=$1
+  	else 
+             svn $operation "${options[@]}" "$1" "${destination}"
+  	fi
+  	
+  	shift
+  	parm=$((parm + 1))	
+  done
+}
+
+mlog() {
+  mvcount=$#
+
+  parm=0
+    
+  while [ $parm -lt $mvcount ]
+  do
+	optcount=${#options[*]}
+  	optcount=$((optcount + 1))
+  	options[$optcount]="$1"
+	if [ "$1" == "-r" ]
+  	then
+		revarg=$((optcount + 1))
+	fi
+	shift
+  	parm=$((parm + 1))	
+  done
+  
+  revs="${options[$revarg]}"
+  for rev in `echo $revs | tr ,- \\\\n: `
+  do
+    options[$revarg]=$rev
+    svn log "${options[@]}"
+  done
+  
+}
+
+
+diffsize() {
+  local summary
+  local totalold
+  local totalnew
+  summary=yes
+  if [ "$1" == "-s" ] || [ "$1" == "--summary-only" ]
+  then
+  	summary=
+	shift
+  fi  
+  totalold=0
+  totalnew=0
+  svn status "$@" | grep -v "^[?]" | cut -c8- | while [ 1 ]
+  do
+    if ! read file 
+    then
+	diff=$((totalnew - totalold))
+	echo "TOTAL $totalold -> $totalnew diff $diff"
+	break
+    fi
+    fileold=`echo "$file" | sed -re 's|^((.*)/)?|\1.svn/text-base/|' -e 's/$/.svn-base/'`
+    if [ -h "$file" ]
+    then
+    	size=`echo -n $file | wc -c`
+    else
+    	size=`wc -c "$file" 2>/dev/null | cut -d' ' -f1`
+    fi
+    oldsize=`wc -c "$fileold" 2>/dev/null | cut -d' ' -f1`
+
+    totalold=$((totalold + oldsize))
+    totalnew=$((totalnew + size))
+
+    diff=$((size - oldsize))
+    [ "$summary" ] && echo "$file" $oldsize "->" $size "diff" $diff
+  done
+
+}
+
+
+tardiff() {
+    if [ ! "$@" ] 
+    then
+	echo must specify filenamee to tar differences in
+	exit -1
+    fi
+    status | cut -c8- | tr \\n \\0 | xargs -r0 tar -c -v -z --exclude=.svn -f "$@"
+}
+
+diff() {
+    export SVNX_INTERNAL_RERUN=diff_internal
+    exec svn diff --diff-cmd $0 "$@"
+}
+
+
+diff_internal() {
+    echo svndiff: "$@"
+
+    file1="$6"
+    file2="$7"
+    
+    if [ "$SVNDIFF_DIFF_CMD" ]
+	then
+	exec $SVNDIFF_DIFF_CMD "$file1" "$file2"
+    else
+	exec tkdiff "$file1" "$file2"
+    fi
+}
+
+undorev() {
+   for rev in $*
+   do    
+     if [ "$rev" = "HEAD" ] || [ "$rev" = "head" ]
+     then
+        rev=HEAD
+	revm1=PREV
+     else
+        revm1=$((rev - 1))
+     fi
+     echo svn merge -r$rev:$revm1 .
+     svn merge -r$rev:$revm1 . | paste /dev/null -
+   done
+}
+
+syncwc() {
+   svn st "$@" | grep '^!' | cut -c8- | tr \\n \\0 | xargs -r0 svn rm
+   svn st "$@" | grep '^?' | cut -c8- | tr \\n \\0 | xargs -r0 svn add
+}
+
+status() {
+    svn st --ignore-externals "$@" | grep -v '^X'
+}
+
+update() {
+    svn up "$@" | egrep -v '(^$)|(^Fetching external item into )' | uniq
+}
+
+find() {
+    exec grep "$@" $SVN_HOME/zz-index.txt
+}
+
+difflines() {
+    export SVNX_INTERNAL_RERUN=difflines_internal
+    exec svn diff --diff-cmd $0 "$@" | egrep -v '^(================)|(Index:)'
+}
+
+difflines_internal() {
+    ##echo "DLI $@"
+
+    file1="$6"
+    file2="$7"
+    title="$5"
+    title="${title%%(working copy)}"
+    add="`/usr/bin/diff "$file1" "$file2" | grep '^> ' | wc -l`"
+    rm="`/usr/bin/diff "$file1" "$file2" | grep '^< ' | wc -l`"
+    add=`echo "        +$add" | tail -8c | sed -e 's/+0/  /'`
+    rm=`echo "        -$rm" | tail -8c | sed -e 's/-0/  /'`
+    echo "$add $rm $title"
+	
+}
+
+eig() {
+    if [ "$*" = "" ]
+    then
+    	dir=.
+	set +x
+        exec svn propedit svn:ignore "$dir"
+    else    
+    	exec svn propedit svn:ignore "$@"	
+    fi
+}
+
+xt() {
+    if [ "$*" = "" ]
+    then
+    	dir=.
+	[ -d "lib" ] && dir=lib
+	set +x
+        exec svn propedit svn:externals "$dir"
+    else    
+    	exec svn propedit svn:externals "$@"	
+    fi
+}
+
+ds() {
+    diffsize "$@"
+}
+
+dl() {
+    difflines "$@"
+}
+
+st() {
+    status "$@"
+}
+
+up() {
+    update "$@"
+}
+
+if [ "$SVNX_INTERNAL_RERUN" ]
+then
+    "$SVNX_INTERNAL_RERUN" "$@"
+    exit 0
+fi
+
+
+cmd=$1
+shift
+
+t=`type -t "$cmd"`
+if [ "$t" == "function" ]
+then
+    "$cmd" "$@"
+    exit 0
+else
+  echo "svnx mcp [options] src (...) dst"
+  echo "     moves multiple files in subversion by calling svn mv multiple times"
+  echo
+  echo "svnx mmv [options] src (...) dst"
+  echo "     copies multiple files in subversion by calling svn cp multiple times"
+  echo
+  echo "svnx mlog [options] -r#-#,#"
+  echo "     like svn log, but lets you specify a revision range/comma list"
+  echo 
+  echo "svnx difflines wcfile (...)"
+  echo "     print number of lines added and removed"
+  echo
+  echo "svnx diffsize wcfile (...)"
+  echo "svnx ds wcfile (...)"
+  echo "     like svn diff, but diffs the size in bytes of the files, also prints total"
+  echo
+  echo "svnx diff"
+  echo '     runs $SVNDIFF_DIFF_COMMAND instead of internal diff command (default to tkdiff)'
+  echo
+  echo "svnx tardiff filename.tgz"
+  echo "     creates a tarball of files that are different in the current directory and below"
+  echo
+  echo "svnx undorev #"
+  echo "     shorthand for svn merge -r#:#-1"
+  echo 
+  echo "svnx xt"
+  echo "     shorthand for svn propedit svn:externals"
+  echo "     if no path is given, defaults to lib if it exists, otherwise ."
+  echo 
+  echo "svnx st"
+  echo "svnx status"
+  echo "     show svn status, but ignore externals ( svn status --ignore-externals | grep -v ^X )"
+  echo
+  echo "svnx up"
+  echo "svnx update"
+  echo "     just like svn update, but removes spam created by externals"
+  echo
+  echo "svnx syncwc"
+  echo "     brute force command to add/rm files that are new/missing in working copy"
+  echo "     (does not commit)"
+  ## svnx find is still here, but it's a joe-specific hack
+  #echo "svnx find"  
+  exit -1
+fi
+
+

@@ -1,0 +1,14 @@
+# set -o xtrace
+print Pretty Printer using indent, vgrind, psroff
+
+print Enter file name to print: 
+read file
+print Enter printer:
+read printer
+
+#indent -bap -bacc -bad -bbb -bl $file ~/tmp/..$file 
+cp $file  ~/tmp/..$file
+print Printing $file on $printer.
+
+vgrind -w ~/tmp/..$file | psroff -c -P$printer &
+

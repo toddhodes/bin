@@ -1,0 +1,17 @@
+for i in 1*
+do
+  echo "--= Processing $i =--"
+#  echo $(grep "Return-Path:" $i | sed 's/Return-Path:/From /') \
+#       $(grep "Received:" $i | head -1 | cut -d":" -f2- | sed 's/,//' | \
+#         sed  's/\(\:[0-9][0-9]\) .*/\1/' | cut -d":" -c1-  ) > $i.new
+   echo $(grep "Return-Path:" $i | sed 's/Return-Path:/From /') \
+        ""  \
+        $(grep "Received:" $i | head -2 | cut -d";" -f2- | sed 's/,//' | \
+           sed  's/\(\:[0-9][0-9]\) .*/\1/' | cut -d":" -c1-  ) \
+        "1995"  > $i.new
+  grep "^Received:" $i >> $i.new
+  cat $i | grep -v "Receiv" | grep -v "From" >> $i.new
+  echo >> $i.new
+done
+
+cat *.new > $MAIL

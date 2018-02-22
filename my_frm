@@ -1,0 +1,46 @@
+#!/usr/bin/perl
+
+# 120 column format
+$wfrom = 25;
+$wtocc = 25;
+$wsubj = 44;
+
+# 80 column format
+# $wfrom = 16;
+# $wtocc = 16;
+# $wsubj = 22;
+
+@mname = ("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec");
+@mnum{@mname} = ("01" .. "12");
+
+if ($ARGV[0] =~ /^-n$/) { $number = 1; shift }
+if ($ARGV[0] =~ /^-(\d+)$/) { $tail = $1; shift }
+
+chop ($user = `whoami`);
+my $file = shift || "/var/mail/$user";
+open MAIL, "< $file" or die "$0: can't read $file: $!\n";
+
+$/ = "\nFrom ";
+
+while(<MAIL>)
+{ #next unless /^From /;
+  s/\n\n.*/\n/s;
+  my %headers = map /^([\w\-]+)\s*:\s*(.*)$/, split "\n";
+
+  my ($mday,$mname,$year,$time)
+   = $headers{'Date'} =~ /(\d+)\s+(\w+)\s+(\d+)\s+(\d+:\d+(:\d+)?)/;
+  my $date = sprintf("%04d-%02d-%02d %s", $year, $mnum{$mname}, $mday, $time);
+
+  push @list, sprintf("%-19s %$wfrom.${wfrom}s => %-$wtocc.${wtocc}s %-$wsubj.${wsubj}s\n", $date,
+    $headers{'From'} || $headers{'Sender'},
+    $headers{'To'} || $headers{'Cc'},
+    $headers{'Subject'});
+}
+
+if ($number)
+{ $width = length(@list);
+  @list = map { sprintf "%${width}s ".substr($_,0,-($width+2))."\n", ++$counter } @list;
+}
+
+$tail ||= @list;
+print @list[-$tail..-1];

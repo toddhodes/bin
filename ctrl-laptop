@@ -1,0 +1,6 @@
+
+#x2x -to marathon-wl:0 -from :0 -west
+
+#ssh -f marathon-wl bin/x2x -to :0 -from marathon-wl:1.0 -west -resurface
+#ssh -f dhcp5bd7 bin/x2x -to :0 -from dhcp5bd7:1.0 -west -resurface
+ssh -f marathon bin/x2x -to :0 -from marathon:1.0 -west -resurface

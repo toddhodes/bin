@@ -1,0 +1,11 @@
+#!/bin/sh -
+#
+NUM_COLORS=70
+LINES=`wc -l < $HOME/.backgrounds`
+RANDOM=`date +%S`
+LINENUM=`echo "($RANDOM % $LINES) + 1" | bc`
+file=`sed -n $LINENUM'p' $HOME/.backgrounds`
+echo Loading \'$file\'
+cd $HOME/images
+nice -50 xv -ncols $NUM_COLORS -root -slow24 -rmode 5 -quit $file&
+

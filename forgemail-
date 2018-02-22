@@ -1,0 +1,34 @@
+#!/bin/sh
+# forge mail
+
+case $1 in
+'')     echo "Usage: forgemail [-t timeout] <sender> <recipient> <subject> <file>";
+        echo "this just spits out the content!"
+        exit ;;
+'-t') timeout=$2 ; shift; shift ;;
+esac
+(echo helo wavemarket.com
+ sleep 1
+ echo mail from: $1
+ sleep 1
+ echo rcpt to: $2
+ sleep 1
+ echo data
+ sleep 1
+ echo From: $1
+ sleep 1
+ echo Message-Id: 1234567890.`date +%m%d%H%M%S`.AB1234@satanvax.EDU
+ sleep 1
+ echo Subject: $3
+ sleep 1
+ echo To: $2
+ sleep 1
+ echo ''
+ sleep 1
+ cat $4
+ sleep 1
+ echo .
+ sleep 1
+ echo quit
+ sleep $timeout
+) 

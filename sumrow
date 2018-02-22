@@ -1,0 +1,7 @@
+sum=0
+for i in $@
+do
+  num=`echo $i | tr -c -d [0-9]`
+  sum=$(($sum + $num)); 
+done
+echo $sum

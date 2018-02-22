@@ -1,0 +1,1 @@
+cat ~/.config/google-chrome/Default/Last\ Tabs | tr '[\001\009]' '\n' | tr -cd '[\012\037-\177]' | grep "://" | sort -u

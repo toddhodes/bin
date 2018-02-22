@@ -1,0 +1,35 @@
+#!/bin/bash
+
+# http://linuxgazette.net/issue65/padala.html
+
+# set red, usuing escapes:
+
+##echo "[0;31;47m"
+
+# or better, tput:
+
+#	0	Black
+#	1	Red
+#	2	Green
+#	3	Yellow
+#	4	Blue
+#	5	Magenta
+#	6	Cyan
+#	7	White
+
+color=0
+case "$1" in
+"black")   color=0 ;;
+"red")     color=4 ;;
+"green")   color=2 ;;
+"blue")    color=1 ;;
+"magenta") color=5 ;;
+"cyan")    color=3 ;;
+"orange")  color=6 ;;
+"grey")    color=7 ;;
+"brightred")  color=8 ;;
+esac
+
+
+tput setf $color
+

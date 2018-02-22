@@ -1,0 +1,2 @@
+random $(random $(random $(random $(random $(showrgb | cut -c14-60))))) | \
+         head -1

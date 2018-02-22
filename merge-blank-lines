@@ -1,0 +1,19 @@
+
+perl -p00e 's{\n\n\n}{\n\n}g'
+ # -00 slurps in paragraph mode, -p prints $_ after each input 'line'
+
+#
+# awk '	BEGIN {numblnk=2} 
+#	{ if (length() != 0) 
+#		{print; numblnk=0} 
+#	else { 
+#		if (numblnk>2 && numblnk%2==0) 
+#		##if ((numblnk>=2 && numblnk%2==0) || (numblnk==1))
+#			{print ; numblnk=1}
+#		else if  (numblnk==1)
+#			{print; numblnk=numblnk+1} 
+#		else 
+#			{numblnk=numblnk+1} 
+#	} }
+#	#{print numblnk}
+#     '

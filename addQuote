@@ -1,0 +1,22 @@
+##########!/usr/sww/bin/bash
+#
+# grabs a random quote from ~/quotes
+
+# this first way might be "more" random
+	x=$(($RANDOM%`grep "\-\-\-" ~/quotes | wc -l`))
+	x=$(($x+1))
+	x=$(grep -n "\-\-\-" ~/quotes | head -$x | tail -1)
+
+#	x=$(random `grep -n "\-\-\-" ~/quotes` | head -1)
+
+y=$(echo $x | cut -d':' -f1)
+y=`echo "$y+1"|bc`
+z=`echo "$y+20"|bc`
+
+echo ""
+lines $y,$z ~/quotes | awk '{ if ($1 == "---") exit; else print $0 }'
+
+#echo "\"We all enter this world in the same way: naked; screaming;
+# soaked in blood.  But if you live your life right, that kind
+# of thing doesn't have to stop there.\"  -- Dana Gould"
+

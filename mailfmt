@@ -1,0 +1,20 @@
+#!/bin/sh
+# mailfmt
+# Improved from the old one -- this one remembers how many > signs were at
+# the start of the message.
+
+TMPFILE1=$HOME/tmp/.mailfmt-tmp
+
+sed 's/^\([>    ]*\)/\1\
+/' >  $TMPFILE1
+
+PREFIX=`grep "^[>        ]" $TMPFILE1 | head -1 | sed 's/[      ]//g'`
+
+grep "^[^>       ]" $TMPFILE1  |
+fmt |
+sed "{
+s/^\([^ ]\)/$PREFIX \1/
+s/^ /> /
+}"
+
+/bin/rm $TMPFILE1

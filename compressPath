@@ -1,0 +1,23 @@
+PATH=$PATH:/usr/bin
+
+tmpfile=/tmp/$RANDOM
+cat > $tmpfile <<EOF
+\$arr{"."} = 1 ;
+\$arr{"/"} = 1 ;
+
+while(<>) {
+    chop ;
+    #print "/" ;
+    foreach \$i (split(/:/)) {
+        #print "\$i\n";
+        if (\$arr{\$i} == 0) {
+            ##print \$i; print "\n" ;
+            print \$i ; print ":" ;
+            \$arr{\$i} = 1 ;
+        }
+    }
+    print ".\n" ;
+}
+EOF
+perl $tmpfile
+rm -f $tmpfile

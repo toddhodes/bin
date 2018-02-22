@@ -1,0 +1,12 @@
+# http://www.netmite.com/android/mydroid/external/netcat/
+adb push nc /data/local/tmp
+adb forward tcp:8888 tcp:8888
+
+# on device, based on mount command
+if={/dev/block/vold/179:0,/dev/block/platform/msm_sdcc.1/by-name/userdata,/dev/block/platform/msm_sdcc.1/by-name/system}
+dd if=$if | /data/local/tmp/nc -l -p 8888
+
+# on host
+nc 127.0.0.1 8888 > sdcard.img
+
+

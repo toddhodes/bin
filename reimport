@@ -1,0 +1,29 @@
+#!/bin/csh -f
+
+set N = `ls ????.jpg | nl |  tail -1 | awk '{print $2}'`
+set N = $N:r
+
+# starting at N+1
+echo $N
+
+@ N ++
+
+while 1
+
+  if ($N < 10) then 
+    set FILENAME = "000$N.jpg"
+  else if ($N < 100) then 
+    set FILENAME = "00$N.jpg"
+  else if ($N < 1000) then 
+    set FILENAME = "0$N.jpg"
+  else 
+    set FILENAME = "$N.jpg"
+  endif
+
+  echo $FILENAME
+  import $FILENAME
+
+  @ N ++
+
+end
+

@@ -1,0 +1,19 @@
+#!/usr/bin/perl
+
+$x = $ARGV[0];
+die "Usage: numbers <max num> [<start num>] [<mult>]" if $x eq '' || $x < 1;
+$y = $ARGV[1];
+$y = 1 if $y eq '';
+die "Usage: numbers <max num> [<start num>] [<mult>]" if $y < 1;
+
+$mult = $ARGV[2];
+$mult = 1 if $mult eq '';
+
+$z = $x - 1;
+
+foreach (0 .. $z) {
+  #print "$_ ";
+
+  $n = $y + ($_ * $mult) ;
+  print "$n ";
+}

@@ -1,0 +1,9 @@
+if [ ! $# = 1 ]
+then
+	echo Usage: $0 '<hostname>'
+	exit
+fi
+
+rsh $1 screendump > /usr/tmp/zxc
+xv /usr/tmp/zxc
+/bin/rm /usr/tmp/zxc

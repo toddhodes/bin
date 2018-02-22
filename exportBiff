@@ -1,0 +1,6 @@
+export DISPLAY=`hunt.mod $1 tdh6t | awk ' 
+       { if (match($1, /[a-z]*\.[a-z]*\./) != 0) 
+           print substr($1, RSTART, RLENGTH)
+       } '`virginia.edu:0
+#set| grep DISPLAY
+xbiff -geometry 33x82+500+74 -bg grey &

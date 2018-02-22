@@ -1,0 +1,4 @@
+
+#function digit () { echo -n $((1+$RANDOM%9)); }
+
+echo -n $((1+$RANDOM%9));

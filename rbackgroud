@@ -1,0 +1,17 @@
+#!/usr/local/bin/ksh
+#  executes backgrounds in file ~/.backgrounds every time_to_wait seconds
+
+integer time_to_wait=${1:-600}
+
+integer LINES=$(wc -l < ~/.backgrounds)
+integer LINENUM
+
+while [ TRUE ]
+do
+  LINENUM=${RANDOM}%${LINES}+1
+  rbackground_command=$(sed -n $LINENUM'p' ~/.backgrounds)
+  print doing: ${rbackground_command}
+  xsetroot & # clean the background
+  eval nice -50 ${rbackground_command}&
+  sleep ${time_to_wait}
+done

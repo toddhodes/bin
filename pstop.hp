@@ -1,0 +1,17 @@
+# mytop2
+# 
+# shows the top few processes continously
+
+while true ; do
+    clear
+    echo "USER       PID %CPU %MEM   SZ  RSS TT STAT START  TIME COMMAND"
+
+    if [ $# -eq 0 ] ; then
+	ps -ef | grep '^[^PID]*$' | sort -n -r +2  
+    else
+	ps -ef | grep '^[^PID]*$' | sort -n -r +2 | head -$1
+    fi
+    sleep 5
+done
+
+

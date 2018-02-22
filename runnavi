@@ -1,0 +1,28 @@
+#!/bin/bash
+
+export NAVIGATION_J2ME_CLIENT_HOME=/home/todd/svn/navigation_j2me/trunk/client
+export NAVIGATION_J2ME_CLIENT_BUILD=/var/tmp/todd/navigation_j2me/trunk/debian-3.1/client
+export WMUTILS_HOME=/ext/build/common/2.13/../main/releases/2007.03.26-13.05/src/wmutils
+export WMUTILS_BUILD=/ext/build/common/2.13/../main/releases/2007.03.26-13.05/debian-3.1/wmutils
+export OTA_HOME=/ext/build/ota/1.0/../main/releases/2007.04.25-11.06/src/ota
+export OTA_BUILD=/ext/build/ota/1.0/../main/releases/2007.04.25-11.06/debian-3.1/ota
+export TPS_HOME=/ext/build/common/2.13/../main/releases/2007.03.26-13.05/src/tps
+export TPS_BUILD=/ext/build/common/2.13/../main/releases/2007.03.26-13.05/debian-3.1/tps
+export BUILD_HOME=/ext/build/common/2.13/../main/releases/2007.03.26-13.05/src/build
+export BUILD_BUILD=/ext/build/common/2.13/../main/releases/2007.03.26-13.05/debian-3.1/build
+export J2ME_WMUTILS_HOME=/ext/build/j2mebase/1.4/best/src/j2me_wmutils
+export J2ME_WMUTILS_BUILD=/ext/build/j2mebase/1.4/best/debian-3.1/j2me_wmutils
+export J2ME_TPS_HOME=/ext/build/j2mebase/1.4/best/src/j2me_tps
+export J2ME_TPS_BUILD=/ext/build/j2mebase/1.4/best/debian-3.1/j2me_tps
+
+export J2ME_TPS_BUILD=/var/tmp/todd/j2mebase/trunk/debian-3.1/j2me_tps
+export J2ME_TPS_HOME=/home/todd/svn/j2mebase/trunk/j2me_tps
+export J2ME_WMUTILS_BUILD=/var/tmp/todd/j2mebase/trunk/debian-3.1/j2me_wmutils
+export J2ME_WMUTILS_HOME=/home/todd/svn/j2mebase/trunk/j2me_wmutils
+
+cd $NAVIGATION_J2ME_CLIENT_HOME
+
+dest=`echo $1 | perl -pe 's~navi://~~' | perl -pe 's/%20/ /g'`
+
+echo $NAVIGATION_J2ME_CLIENT_HOME/misc/runMicroEmulator "$dest"
+$NAVIGATION_J2ME_CLIENT_HOME/misc/runMicroEmulator "$dest"

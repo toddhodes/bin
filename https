@@ -1,0 +1,3 @@
+on tequila:
+  sudo redir --debug --laddr=pathway-dsc.wavemarket.com --lport=443 --caddr=stimpy --cport 8443
+

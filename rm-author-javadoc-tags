@@ -1,0 +1,5 @@
+for i in  "$@"    #$(g -l @author `fs`)
+do   
+  sed -i /^.*@author.*$/d $i
+done
+

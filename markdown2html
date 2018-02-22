@@ -1,0 +1,68 @@
+#!/usr/bin/env python
+"""Convert markdown to HTML"""
+
+def before(title=None):
+    if title is None:
+        title = ''
+    else:
+        if "<title" not in title:
+            title = "\n  <title>{0}</title>".format(title)
+    return """<html>
+<head>
+  <link rel="stylesheet" type="text/css" media="all" href="http://svn/svn/wm/docs/css/markdown.css" />{title}
+</head>
+<body>
+""".format(title=title)
+
+def after():
+    return """</body>
+</html>
+"""
+
+import markdown
+import sys
+import os
+from optparse import OptionParser
+
+parser = OptionParser()
+parser.add_option("-i", "--infile", dest="infile",
+                  help="Markdown input file (or stdin if none)",
+                  default=None)
+parser.add_option("-o", "--outfile", dest="outfile",
+                  help="Markdown output file (stdout if none)",
+                  default=None)
+parser.add_option("-g", "--generate", action="store_true", dest="generate",
+                  help="Generate an output file from the input file name",
+                  default=False)
+parser.add_option("-t", "--title", action="store", dest="title",
+                  help=("Title for the document "
+                        "(default comes from a header at the top of the input or the input file name, "
+                        "if either is supplied)"),
+                  default=None)
+
+(options, args) = parser.parse_args()
+
+if options.infile and options.generate:
+    if options.infile.endswith(".markdown"):
+        options.outfile = options.infile.replace(".markdown",".html")
+    if options.infile.endswith(".md"):
+        options.outfile = options.infile.replace(".md",".html")
+    else:
+        options.outfile = options.infile + ".html"
+
+input = options.infile and open(options.infile) or sys.stdin
+output = options.outfile and open(options.outfile,'w') or sys.stdout
+
+input_text = input.read()
+body = markdown.markdown(unicode(input_text,'utf-8'), ['toc'])
+
+if options.title is None:
+    if input_text.startswith("#"):
+        line1, _, _ = input_text.partition("\n")
+        options.title = line1.lstrip("#").lstrip()
+    elif options.infile:
+        options.title, _ = os.path.splitext(os.path.basename(options.infile))
+
+output.write(before(options.title))
+output.write(body.encode('utf-8'))
+output.write(after())

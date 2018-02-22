@@ -1,0 +1,37 @@
+#!/usr/bin/perl -w
+#
+# Expands symlinks before Git/Hg sees them.
+#
+
+
+use Cwd 'abs_path';
+
+# Will the real DVCS please stand up?
+my ($x,$orig) = ($0 =~ m#^(.*/)?([^/]+)$#);
+
+# XXX force git XXX
+$orig = "git";
+
+my $bin;
+foreach (`which -a $orig`) {
+    chomp;
+    $bin = $_ unless ($_ eq $0);
+}
+die "Can't find $orig binary.\n" unless $bin;
+
+# Expand any symlinks in our args
+my @args = ($bin);
+foreach (@ARGV) {
+    my ($dir, $name) = ($_ =~ m#^(.*)/([^/]+)$#);
+    if ($dir && -d $dir) {
+        my $abspath = abs_path($dir);
+        if ($abspath !~ m/$dir$/) {
+            push @args, "$abspath/$name";
+            next;
+        }
+    }
+    push @args, $_;
+}
+
+# Now pass the processed arglist on to the real deal
+exec @args;

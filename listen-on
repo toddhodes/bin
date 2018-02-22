@@ -1,0 +1,17 @@
+#!/bin/sh
+# path trick for wish variants \
+exec smash $0 ${1+"$@"}
+
+global env mash
+set env(TCLCL_IMPORT_DIRS) http://www-mash.CS.Berkeley.EDU/mash/software/mashlets/5.0b2/
+
+global argv
+import AnnounceListenManager
+AnnounceListenManager public recv_announcement  {a b c d} {
+  puts "$c"
+}
+#new AnnounceListenManager 230.5.6.7/8888
+puts "listening on $argv"
+new AnnounceListenManager $argv
+
+vwait forever

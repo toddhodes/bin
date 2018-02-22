@@ -1,0 +1,7 @@
+## redirremote 1234 1.2.3.4 80                                                                                                                             
+redirremote() {
+    myip=`ifconfig eth0 | grep inet.addr | cut -d: -f2 | cut -d' ' -f1`
+    sudo iptables -t nat -I OUTPUT      -p tcp --destination $myip --destination-port $1 -j DNAT --to-destination $2:$3
+    sudo iptables -t nat -I PREROUTING  -p tcp --destination $myip --destination-port $1 -j DNAT --to-destination $2:$3
+    sudo iptables -t nat -I POSTROUTING -p tcp --destination $2 --destination-port $3 -j SNAT --to-source $myip
+}

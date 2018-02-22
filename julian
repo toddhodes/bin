@@ -1,0 +1,88 @@
+From Ed-Ferguson@ti.com Sun Sep 17 03:38:22 PDT 1995
+
+In article <439vsl$e2g@hpscit.sc.hp.com> aites@lvld.hp.com (Jim Aites) writes:
+
+   What routines have you folks come up with to allow simple subtraction to be
+   used on two different dates?  The reformating isn't hard, but the monthly
+   and yearly (god help us all at the turn of the century) isn't so easy.
+
+I use the two functions in the script below to convert between dates
+and day numbers and to perform date arithmetic.  The script also works
+with gawk and nawk.
+
+Ed
+
+///////////////////////////////////////////////////////////////////////////////
+
+#!/usr/local/bin/mawk -f
+#
+#   $ julian not_a_number
+#   Usage:
+#     julian                 ==>  current_day_number
+#     julian day_number      ==>  year month day
+#     julian year month day  ==>  day_number
+#   $ julian
+#   2449977
+#   $ julian 2449977
+#   1995 9 16
+#   $ julian 1995 9 16
+#   2449977
+# 
+#   Coded by Ed-Ferguson@ti.com
+#
+BEGIN {
+  HaveGnuDate = 0;              # Set to 1 if date accepts %Y format
+  for (i = 1; i < ARGC; i++)
+    if (ARGV[i] !~ /^[0-9]+$/)
+      error = 1;
+  if (error == 1 || ARGC !~ /^[124]$/) {
+    printf("Usage:\n");
+    printf("  julian                 ==>  current_day_number\n");
+    printf("  julian day_number      ==>  year month day\n");
+    printf("  julian year month day  ==>  day_number\n");
+  } else if (ARGC == 1) {
+    if (HaveGnuDate)
+      "date '+%Y %m %d'" | getline;
+    else {
+      "date '+%y %m %d'" | getline;
+       $1 += ($1 >= 70)? 1900 : 2000;
+    }
+    printf("%d\n", DayNumber($1, $2, $3));
+  } else if (ARGC == 2) {
+    YearMonthDay(ARGV[1], ymd);
+    printf("%d %d %d\n", ymd[1], ymd[2], ymd[3]);
+  } else { # ARGC == 4
+    day_number = DayNumber(ARGV[1], ARGV[2], ARGV[3]);
+    printf("%d\n", day_number);
+  }
+}
+
+# The following routines are based on "A Machine Algorithm for
+# Processing Calendar Dates" by Henry F. Fliegel and Thomas C.
+# Van Flandern, Communications of the ACM, Volume 11, Number 10,
+# October, 1968, page 657, which was described in an alt.sources
+# article posted by Ian Miller (ism@metagen.uucp) on 25 May 93.
+
+function DayNumber(year, month, day	         , temp) {
+  temp = int((14 - month) / 12);
+  return \
+    day - 32075 \
+    + int(1461 * (year + 4800 - temp) / 4) \
+    + int((367 * (month - 2 + temp * 12)) / 12) \
+    - int((3 * int((year + 4900 - temp) / 100)) / 4);
+}
+
+function YearMonthDay(day_number, ymd		 , temp1, temp2) {
+  temp1 = day_number + 68569;
+  temp2 = int(4 * temp1 / 146097);
+  temp1 = temp1 - int((146097 * temp2 + 3) / 4);
+  ymd[1] = int(4000 * (temp1 + 1) / 1461001);
+  temp1 = temp1 - int(1461 * ymd[1] / 4) + 31;
+  ymd[2] = int(80 * temp1 / 2447);
+  ymd[3] = temp1 - int(2447 * ymd[2] / 80);
+  temp1 = int(ymd[2] / 11);
+  ymd[2] = ymd[2] + 2 - 12 * temp1;
+  ymd[1] = 100 * (temp2 - 49) + ymd[1] + temp1;
+}
+
+

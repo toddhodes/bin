@@ -1,0 +1,7 @@
+(
+ cd
+ /usr/bin/calendar
+ echo -=-=-
+ awk '{ if ($1 == "-=-=-") exit; else print $0 }' ~/calendar \
+     | egrep -i "(`date +%a`|`TZ=PST-16PDT date +%a`)"
+)

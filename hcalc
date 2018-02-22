@@ -1,0 +1,3 @@
+
+echo 'config("mode","hex") ;' $* | calc -p 
+

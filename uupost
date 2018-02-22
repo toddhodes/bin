@@ -1,0 +1,79 @@
+#!/bin/sh
+# The following is a script that I wrote to uuencode a file, split it,
+# and then pump it to inews for posting.  You probably will have to
+# change the path of inews in the script.
+
+# Determine the file name
+
+FILE=$1
+if [ ! -f $FILE ]; then
+  echo $0: file $FILE not found
+  exit 1
+fi
+
+# Remove old split files, uuencode, split, count parts
+
+if [ -f x[a-z][a-z] ]; then
+  rm x[a-z][a-z]
+fi
+
+uuencode $FILE $FILE | split
+
+PARTS=0
+for i in x[a-z][a-z]; do PARTS=`expr $PARTS + 1`; done
+echo \\n$FILE has $PARTS parts\\n
+
+# Get some basic information
+
+if [ ! "$NEWSGROUPS" ]; then
+  echo Newsgroups: \\c
+  NEWSGROUPS=`line`
+fi
+
+if [ ! "$NEWSGROUPS" ]; then
+  echo $0: you must specify a newsgroup
+  exit 1
+fi
+
+if [ ! "$SUBJECT" ]; then
+  echo Subject: \\c
+  SUBJECT=`line`
+fi
+
+if [ ! "$DISTRIBUTION" ]; then
+  echo Distribution: \\c
+  DISTRIBUTION=`line`
+fi
+
+if [ ! "$DISTRIBUTION" ]; then
+  echo $0: you must specify a distribution
+  exit 1
+fi
+
+if [ ! "$ORGANIZATION" ]; then
+  echo Organization: \\c
+  ORGANIZATION=`line`
+fi
+
+# Mail each of the files
+
+echo
+PART=0
+for i in x[a-z][a-z]; do
+  PART=`expr $PART + 1`
+  echo "$FILE $SUBJECT [$PART of $PARTS]"
+  ( echo Newsgroups: "$NEWSGROUPS"
+    echo Subject: "$FILE $SUBJECT [$PART of $PARTS]"
+    echo Distribution: "$DISTRIBUTION"
+    echo Organization: "$ORGANIZATION"
+    echo
+    echo BEGIN----------$FILE----------$PART/$PARTS
+    cat $i
+    echo END------------$FILE----------$PART/$PARTS 
+  ) | inews -h
+  sleep 10 # so they might come in order
+done
+
+# Remove encoded files
+
+rm x[a-z][a-z]

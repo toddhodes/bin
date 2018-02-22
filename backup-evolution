@@ -1,0 +1,4 @@
+cp /home/todd/evolution.tar.gzs- /home/todd/evolution.tar.gz--
+cp /home/todd/evolution.tar.gz /home/todd/evolution.tar.gz-
+tar -czvf /home/todd/evolution.tar.gz ~/evolution/
+

@@ -1,0 +1,15 @@
+#!/bin/bash
+
+case $1 in
+"") echo "usage: $0 <server> <port> <file-to-POST>"; exit -1;;
+esac
+
+cl=`wc -c $3 | awk '{ print \$1}'`
+
+( echo "POST / HTTP/1.0" ; \
+    echo "Content-Length: $cl" ; echo ; \
+    cat $3 ) > /tmp/zxc
+
+(cat /tmp/zxc ; sleep 5 ) | telnet $1 $2 
+
+

@@ -1,0 +1,4 @@
+pbpaste > /tmp/z; scp /tmp/z ren:/tmp/z
+echo on ren:
+echo cat /tmp/z
+

@@ -1,0 +1,15 @@
+
+
+
+## the -n flag is the equiv to "while (<>) { <EXPRESSION> }":
+perl -n -e "if (/\S/) { print }"
+
+## the -0777 flag is 'whole file' mode (while -00 is paragraph mode):
+#perl -0777 -pe 's/\n+/\n/g'
+## but it will leave a trailing blank line
+
+#awk '{if (NF != 0) print}'
+#awk '{if (length() != 0) print}'
+#sed 's/^ *$//' 
+## doesn't work
+##awk '{if ($NF != 0) print}'

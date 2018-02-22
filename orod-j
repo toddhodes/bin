@@ -1,0 +1,6 @@
+
+# lists people on /home/orodruin/j/grad
+#
+
+ls -l /home/orodruin/j/grad | egrep -v "(DELETED|DISKUSAGE|total)" \
+                            | cut -c55-80 | sed 's/\///'

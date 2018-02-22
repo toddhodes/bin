@@ -1,0 +1,69 @@
+
+case $1 in
+"") echo "usage: $0 <char> [<char> [<char>]]" ; exit -1;;
+esac
+
+
+if [ $# == 4 ]
+then
+    #C1=`calc 0x$1` ; C2=`calc 0x$2` ; C3=`calc 0x$3` ; C4=`calc 0x$4`
+    C1=`calc $1` ; C2=`calc $2` ; C3=`calc $3` ; C4=`calc $4`
+    echo bytes $C1, $C2, $C3, $C4
+    if [ $C1 -gt 255 -o $C2 -gt 255 -o $C3 -gt 255 -o $C4 -gt 255 ]
+    then
+        echo "byteval too large; input should a list of pairs of hex digits, eg, 'c3 a2'"
+        exit -1;
+    fi
+    U=`calc "($C1 - 192)*64 + ($C2 - 128)"`
+    U=`calc "($C1 - 240) * 262144 + ($C2 - 128) * 4096 + ($C3 - 128) * 64 + $C4 - 128"`
+    echo -n "codepoint $U = "
+    printf "\t0x%x\n" "$U"
+fi
+
+if [ $# == 3 ]
+then
+    #C1=`calc 0x$1` ; C2=`calc 0x$2` ; C3=`calc 0x$3`
+    C1=`calc $1` ; C2=`calc $2` ; C3=`calc $3`
+    echo bytes $C1, $C2, $C3
+    if [ $C1 -gt 255 -o $C2 -gt 255 -o $C3 -gt 255 ]
+    then
+        echo "byteval too large; input should a list of pairs of hex digits, eg, 'c3 a2'"
+        exit -1;
+    fi
+    U=`calc "($C1 - 192)*64 + ($C2 - 128)"`
+    U=`calc "($C1 - 224) * 4096 + ($C2 - 128) * 64 + ($C3 - 128)"`
+    echo -n "codepoint $U = "
+    printf "\t0x%x\n" "$U"
+fi
+
+if [ $# == 2 ]
+then
+    #C1=`calc 0x$1` ; C2=`calc 0x$2`
+    C1=`calc $1` ; C2=`calc $2`
+    echo bytes $C1, $C2
+    if [ $C1 -gt 255 -o $C2 -gt 255 ]
+    then
+        echo "byteval too large; input should a list of pairs of hex digits, eg, 'c3 a2'"
+        exit -1;
+    fi
+    U=`calc "($C1 - 192)*64 + ($C2 - 128)"`
+    echo -n "codepoint $U = "
+    printf "\t0x%x\n" "$U"
+fi
+
+if [ $# == 1 ]
+then
+    #C1=`calc 0x$1`
+    C1=`calc $1`
+    echo byte $C1
+    if [ $C1 -gt 255 ]
+    then
+        echo "byteval too large; input should a list of pairs of hex digits, eg, 'c3 a2'"
+        exit -1;
+    fi
+    U=`calc "($C1 - 192)*64 + ($C2 - 128)"`
+    U=`calc $C1`
+    echo -n "codepoint $U = "
+    printf "\t0x%x\n" "$U"
+fi
+

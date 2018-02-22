@@ -1,0 +1,5 @@
+
+export LANG=en_US.UTF-8
+
+$CATALINA_HOME/bin/catalina.sh start
+

@@ -1,0 +1,9 @@
+# user-names
+# Displays for each user currently logged onto the machine,
+# the user and the user's name, separated by a tab.
+
+ypmatch $(
+who |
+sed 's/\([^ 	]*\).*$/\1/' \
+) passwd |
+sed 's/\(.*\):.*:.*:.*:\(.*\):.*:.*$/\1	\2/'

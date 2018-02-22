@@ -1,0 +1,82 @@
+#!/bin/sh
+id='$Id: bargraph,v 1.2 1998/07/30 04:37:30 jam Exp $'
+#
+# Copyright (c) 1998  Kazushi (Jam) Marukawa
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
+# 1. Redistributions of source code must retain the above copyright
+#    notice, this list of conditions and the following disclaimer.
+# 2. Redistributions in binary form must reproduce the above copyright
+#    notice in the documentation and/or other materials provided with 
+#    the distribution.
+#
+# THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY
+# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR 
+# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR BE LIABLE
+# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT 
+# OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR 
+# BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, 
+# WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE 
+# OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN 
+# IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+#
+
+tmpdir=/tmp/bargraph.$$
+mkdir $tmpdir || (echo "cannot create $tmpdir directory" >&2; exit 1)
+trap "rm -rf $tmpdir; exit 1" 1 2 3 9
+
+Usage="Usage: $0 [-W width of bar] [any arguments for graph]
+Example: $0 -T x -q .2 data1 -q .3 data2 -X \"number of processors\" -Y speedup
+Known porblem: data must be in \"x-value y-value\" format."
+
+case $# in 0) echo "$Usage" >&2; rm -rf $tmpdir; exit 1;; esac
+
+width=0.2
+num=0
+args="-B"
+while true; do
+    case x$1 in
+    x-W)
+        width=$2; shift; shift;;
+    x-s|x--save-screen|x-t|x--toggle-transpose-axes|x--toggle-rotate-y-label|x-B|x--toggle-auto-bump|x-C|x--toggle-use-color|x-O|x--portable-output|x--help*|x--list-fonts|x--version)
+	args="$args $1"; shift;;
+    x-X|x--x-title|x-Y|x--y-title|x-L|x--top-label)
+	args="$args $1 '$2'"; shift; shift;;
+    x-x|x--x-limits|x-y|x--y-limits)
+	args="$args $1"; shift;
+	case x$1 in
+	x[0-9.]*) args="$args $1"; shift;;
+	esac
+	case x$1 in
+	x[0-9.]*) args="$args $1"; shift;;
+	esac
+	case x$1 in
+	x[0-9.]*) args="$args $1"; shift;;
+	esac;;
+    x-*)
+	args="$args $1 $2"; shift; shift;;
+    x)
+	break;;
+    x*)
+	sed -e 's/^\(.*\)[ \t][ \t]*\(.*\)$/n=\1 v=\2/' < $1 |
+	    while read i; do
+		eval $i
+		nl=`echo $n+$width*$num|bc -l`
+		nr=`echo $nl+$width|bc -l`
+		echo $nl 0 $nl $v $nr $v $nr 0 $n 0 > $tmpdir/$1.$n
+		echo -n " $tmpdir/$1.$n" >> $tmpdir/$1
+	    done
+	args="$args `cat $tmpdir/$1`"
+	num=`expr $num + 1`
+	shift;;
+    esac
+done
+
+eval "graph $args"
+
+rm -rf $tmpdir

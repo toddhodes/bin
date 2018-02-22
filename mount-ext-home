@@ -1,0 +1,2 @@
+sudo mount -t nfs -o resvport,ro,soft,intr,rsize=8192,wsize=8192,timeo=900,retrans=3,proto=tcp fileserver1:/data/home /ext/home/
+

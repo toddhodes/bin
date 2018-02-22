@@ -1,0 +1,47 @@
+#!/bin/sh
+# path trick for wish variants \
+exec wish $0 ${1+"$@"}
+
+checkbutton .but -text "Mute" -command mute -variable volperc
+scale .s -command vol
+pack .but .s
+
+catch {exec amixer set "Master" unmute}
+catch {exec amixer set "Master" 0}
+global called 
+set called 0
+#after 1000 printcall
+
+
+proc printcall {} {
+   global called
+   puts $called
+   after 1000 printcall
+}
+
+proc mute {} {
+    global volperc
+    if {$volperc == 1} {
+	set mutep mute
+    } else {
+	set mutep unmute
+    }
+    catch {exec amixer set "Master" $mutep}
+}
+
+proc vol {amt} {
+    global called
+    set called [incr called]
+    set newval [expr $amt * 0.31]
+    set rstring "amixer set \"Master\" $newval"
+    #puts $rstring
+    catch {eval exec $rstring }
+}
+
+proc gonet {} {
+  set url [selection get]
+    set urlarg openURL($url,new-window)
+    if ([catch {exec netscape -remote $urlarg}]) {
+      catch {exec netscape -install $url &}
+    }
+}

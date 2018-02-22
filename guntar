@@ -1,0 +1,9 @@
+if [ "x"$2 = "x" ] ; then
+  echo "guntar -args <filename>  files..." ; exit 
+fi
+
+
+args=$1
+infile=$2
+shift ; shift
+gunzip < $infile | tar $args - $*

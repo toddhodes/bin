@@ -1,0 +1,49 @@
+#!/bin/csh -f
+#sigswitch, v2.2
+#Josh Laff (smiley@uiuc.edu): November 18, 1992
+# Usage: ~jal41820/bin/sigswitch2 &
+# This program randomly changes the user's .sig once a minute. It reads
+# a standard base from the begining of the file $HOME/.sig.info, then randomly
+# chooses an appendage for the sig, and write it to $HOME/.sig.
+# The form of $HOME/.sig.info is as follows:
+# base, line1
+# base, line2
+# base, line3               As with all my programs, this will terminate
+# (...)                            automatically after the user becomes no longer
+# ---                       logged in, which means you can run it in the
+# appendage 1               background in your .login, and don't have to
+# (...)                            worry about being yelled at for leaving
+# ---                       proccess running the background while not
+# appendage 2               logged in. Don't you love when the commenting
+# (...)                            takes up more space than the program? :)
+# ---
+# (...)
+# ---
+# For a sample, see ~jal41820/.sig.info.
+# IMPORTANT NOTE: IF ANY OF THE APPENDAGES CONTAIN "---", THIS WILL MESS UP
+# THE PROGRAM. DON'T DO IT!
+
+set woo = ` who | grep $USER | wc -l`
+while ( $woo > 0 )
+       set hold = `grep '\-\-\-' $HOME/.sig.info | wc -l`
+       set num = `expr $hold - 1`
+       set plac=`expr 32767 / $num`
+       set foo=`ksh -c 'echo $RANDOM'`
+       set sig=`expr $foo / $plac + 1`
+#       set line=`grep -n '\-\-\-' $HOME/.sig.info | tail +"$sig" \
+#			| tail +r | tail -1 | sed 's/:.*//'`
+       set line=`grep -n '\-\-\-' $HOME/.sig.info | tail +"$sig" \
+			| tail -1 | sed 's/:.*//'`
+       echo "1;/---/ -1 w /tmp/$USER.signa" | ed - $HOME/.sig.info
+       echo "$line +1;/---/ -1 W /tmp/$USER.signa" | ed - $HOME/.sig.info
+       mv /tmp/$USER.signa $HOME/.sig
+       sleep 60
+       set woo = ` who | grep $USER | wc -l`
+end
+
+#  stufff...
+#=============
+#---
+#fortune 1
+
+#fortune 2

@@ -1,0 +1,45 @@
+#!/usr/sww/bin/perl
+
+$unix = 1;
+$bak = '';
+while ($ARGV[0] =~ /^-/o)
+{
+	$swi = shift;
+	if ($swi eq '-d') {
+		$unix = 0;
+	}
+	elsif ($swi =~ /^-b(\w*)/) {
+		if ($1) {
+			$bak = ".$1";
+		}
+		else {
+			$bak = ".bak";
+		}
+	}
+}
+
+@filelist = grep(-T, @ARGV);
+if ($#filelist < 0)
+{
+	print <<"EOF";
+Usage:  $0 [-u|-d] [-b][ext] [files ...]
+where:  -u : to convert to UNIX (CR+LF --> LF)  <default>
+        -d : to convert to DOS  (LF --> CR+LF)
+        -b : to backup the original files with extension in [ext]
+EOF
+	exit;
+}
+
+if ($unix == 1)
+{
+	print("perl -pi$bak -e 's/\\cM\$//go' @filelist");
+	print "\n";
+	exec("perl -pi$bak -e 's/\\cM\$//go' @filelist");
+}
+else
+{
+	print("perl -pi$bak -e 's/\\n/\\cM\\n/go' @filelist");
+	print "\n";
+	exec("perl -pi$bak -e 's/\\n/\\cM\\n/go' @filelist");
+}
+

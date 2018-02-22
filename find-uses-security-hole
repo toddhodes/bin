@@ -1,0 +1,9 @@
+#
+# find executables that use insecure libc call "gethostbyname"
+#
+
+for pid in `lsof /lib/x86_64-linux-gnu/libc-2.??.so | awk '{print $2}'|tail -n +2` 
+do 
+ 2>&1 objdump -T /proc/$pid/exe | grep gethostbyname > /dev/null && ls -l /proc/$pid/exe
+done
+

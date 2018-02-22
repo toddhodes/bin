@@ -1,0 +1,10 @@
+while true 
+do   
+  f2=`ps auxww |grep ssh2 | grep tequila | grep frijole2`;   
+  if [ X"$f2" = X ]   
+  then     
+     ssh2 -f -S +g tequila.wavemarket.com -R 8082:frijole2:8080   
+  fi 
+  sleep 30
+done
+

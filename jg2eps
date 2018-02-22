@@ -1,0 +1,16 @@
+#!/bin/csh
+
+set to = $1:r.ps
+
+jgraph $1 > $to
+
+perl -i -n -e 'if (/^%%BoundingBox:/) { @bb=split; $mar = 4; \
+   $bb[1] -= $mar; $bb[2] -= $mar; $bb[3] += $mar; $bb[4] += $mar; \
+   if ($bb[1] < 0) { $dx = -$bb[1]; $bb[3] += $dx; $bb[1] = 0; } \
+   if ($bb[2] < 0) { $dy = -$bb[2]; $bb[4] += $dy; $bb[2] = 0; } \
+   print join(" ", @bb), "\n"; } elsif (/^%%EndComments/) {\
+   print $_; print "$dx $dy translate\n"; } else { print $_; }' $to
+
+ps2epsi $to  $1:r.eps
+
+addmargin $1:r.eps

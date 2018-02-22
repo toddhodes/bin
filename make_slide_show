@@ -1,0 +1,35 @@
+case $1 in
+"") echo "Usage: $0 <files>" ; exit ;;
+esac
+
+total_num=$#
+
+[ -f index.html ] || echo "need to have an index.html in the current dir"
+[ -f index.html ] || exit
+
+[ -d slides/ ] || mkdir slides
+cd slides
+pwd
+
+echo "Making $# links..."
+
+rm -f [0-9].jpg [0-9][0-9].jpg [0-9][0-9][0-9].jpg
+for i in `numbers $#`
+do
+  #echo ln -s ../$1 $i.jpg
+  ln -s ../$1 $i.jpg
+  shift
+done
+
+echo "Done making links. Creating new index.html"
+
+cd ..
+cp index.html zxcZXCzxc-index.html
+cat zxcZXCzxc-index.html \
+    | sed "s/var maxSlide.*/var maxSlide = $total_num;/" > index.html
+
+rm -f zxcZXCzxc-index.html
+echo "Done creating new index.html"
+
+unset total_num
+

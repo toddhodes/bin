@@ -1,0 +1,27 @@
+
+#grep "://" ~/.mosaic-hotlist-default | cut -d' ' -f1 > /usr/tmp/http
+#grep -v "://" ~/.mosaic-hotlist-default | grep -v ncsa | grep -v "^Default$" > /usr/tmp/nohttp
+
+#for i in `</usr/tmp/http` 
+#do
+#	echo "<li><A HREF="$i">$i</A>"
+#done
+
+echo '<H2>Mosaic Hotlist</H2>'
+echo '<P>'
+echo '<menu>'
+
+hl2html ~hodes | egrep "(HREF|\\A)" | grep -v "This file was generated" | \
+                 sed 's/<LI><A HREF="http:\/\/http\/\~hodes">/\
+<\/menu>\
+<menu>\
+<B>\
+/' | \
+                 sed 's/^\([ ]*---=.*\)<\/A>/\1\
+<\/B>/'
+
+echo '<P>'
+echo '</menu>'
+echo '<img src="http://now.cs.berkeley.edu/images/sww/lines/line1.gif">'
+echo '<ADDRESS> Todd D. Hodes, &lt;hodes@cs.berkeley.edu&gt; </ADDRESS>'
+echo '</body>'

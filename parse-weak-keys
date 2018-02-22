@@ -1,0 +1,9 @@
+for i in `cat /tmp/weak`
+do    
+   if echo $i | grep known 
+   then   
+     line=`echo $i | cut -d: -f2`;
+     file=`echo $i | cut -d: -f1`;
+     sed -n ${line}p $file | awk '{print $1}'
+   fi  
+done  

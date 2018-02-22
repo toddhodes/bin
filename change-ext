@@ -1,0 +1,27 @@
+
+case $1 in
+'')   echo "Usage: $0 <new_ext> files..." ; exit ;;
+esac
+case $2 in
+'')   echo "Usage: $0 <new_ext> files..." ; exit ;;
+esac
+
+
+function dirname()
+{
+  local dir="${1%${1##*/}}"
+  [ "${dir:=./}" != "/" ] && dir="${dir%?}"
+  echo "$dir"
+}
+
+
+new_ext=$1
+shift 
+
+for i in "$@"
+do
+  echo mv "$i" "`dirname $i`/`/bin/basename "$i"`.$new_ext"
+  mv "$i" "`dirname $i`/`/bin/basename "$i"`.$new_ext"
+done
+
+unset new_ext

@@ -1,0 +1,18 @@
+PATH=$PATH:/usr/bin
+
+function dirname()
+{
+  local dir="${1%${1##*/}}"
+  [ "${dir:=./}" != "/" ] && dir="${dir%?}"
+  echo "$dir"
+}
+
+dname=`dirname $0`
+echo $dname
+tmpPath=`set | grep ^PATH | cut -d"=" -f2 | perl $dname/fixMyPath.pl`
+echo "set PATH to: "
+echo $tmpPath
+echo "?          (^C to exit...)"
+read
+export PATH=$tmpPath
+unset tmppath

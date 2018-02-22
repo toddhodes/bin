@@ -1,0 +1,5 @@
+echo cp $1 $2/$1
+echo yes? or ^C
+read
+cp $1 $2/$1
+

@@ -1,0 +1,27 @@
+
+# grabs a random quote from file "quotes", dump to file "signature"
+# "quotes" is the list of quotes separated by line with only "---" in them
+# e.g.
+#  quote1
+#---
+# quote2
+# quote2
+#---
+#
+
+while true
+do
+  x=$(($RANDOM % $(grep "\-\-\-" quotes | wc -l)))
+  x=$(($x+1))
+  x=$(grep -n "\-\-\-" quotes | head -$x | tail -1)
+
+
+  y=$(echo $x | cut -d':' -f1)
+  y=$(($y+1))
+  z=$(($y+20))
+
+  sed -n $y,${z}p quotes | \
+          awk '{ if ($1 == "---") exit; else print $0 }' > signature
+  sleep 60
+done
+

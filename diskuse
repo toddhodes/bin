@@ -1,0 +1,1 @@
+du | grep -v "/.*/" | sort -n 

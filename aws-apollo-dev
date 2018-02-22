@@ -1,0 +1,4 @@
+echo "# workon apollo-deploy"
+
+eval "$(awsenv apollo-dev-admin)"
+aws iam list-users

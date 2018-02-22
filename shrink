@@ -1,0 +1,6 @@
+case $1 in
+"") echo "$0 <file.jpg>" ; exit 1;;
+esac
+display -size 320x240 -write `basename $1 .jpg`_sm.jpg $1
+#display -size 200x200 -write `basename $1 .jpg`_sm.jpg $1
+

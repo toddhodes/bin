@@ -1,0 +1,2 @@
+export CVSROOT=ninja.cs.berkeley.edu:/disks/ninja/.CVS-ninja
+export CVS_RSH=ssh

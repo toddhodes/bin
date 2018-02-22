@@ -1,0 +1,5 @@
+#!/ext/home/todd/.virtualenvs/flake8/bin/python
+from flake8.run import main
+ 
+if _name_ == '_main_':
+    main()

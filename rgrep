@@ -1,0 +1,19 @@
+#!/bin/sh -
+#set -o xtrace
+if [ ! $# = 1 ]
+then
+	echo "Usage: $0 grep_string"
+	exit
+fi
+
+FILES=""
+
+for i in `find . -print`
+do
+if [ -f $i ]
+	then
+		FILES="$FILES $i"
+	fi
+done
+
+egrep $1 $files 

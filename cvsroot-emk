@@ -1,0 +1,2 @@
+export CVSROOT=:kserver:mash.cs.berkeley.edu:/a/dwight/4c/home/emrek/cvs.root
+export CVS_RSH=rsh

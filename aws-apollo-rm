@@ -1,0 +1,24 @@
+#!/bin/bash
+#
+# - ssh to bastion ip 
+# - from there, ssh to a manager’s private ip
+#   eg, todd@ip-172-18-129-216
+# - use this there
+#
+
+
+case "$1" in
+"") echo "usage: $0 <ph#>"; exit 1;;
+*) echo "ph# $1";;
+esac
+
+cat > /tmp/myrm <<EOF
+select @user_id := id from vulpix_db.user where phone_number like '%$1%';
+delete from willis_db.auth_zero_user where user_id = @user_id;
+delete from willis_db.session where user_id = @user_id;
+delete from vulpix_db.user where id = @user_id;
+delete from charmander_db.participant where user_id = @user_id;
+EOF
+
+cat /tmp/myrm | mysql -uroot -p -h mysql.llabs
+

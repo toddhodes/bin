@@ -1,0 +1,1 @@
+(cd /ext/home/joel/skt/logs/skcc/wave ; java com/skcc/analyzer/Analyzer)

@@ -1,0 +1,64 @@
+
+case $2 in
+"") echo "usage $0 <month> <year>"; exit -1;;
+esac
+
+
+sum=0
+
+#count from '06
+((year=$2-2006))
+
+((months=12 * $year + $1))
+
+function vested () {
+  # $1 is # months since 2006
+  # $2 is # months already vested in 2006
+  # $3 is # of options
+  ((months=$1+$2))
+  if [ $months -gt 48 ] 
+  then 
+    echo $3
+  else 
+    ((months=$months*$3/48))
+    echo $months
+  fi
+}
+
+function shares () {
+  total=0
+
+# 450k 7/02 - 24+7
+  ((total=$total + `vested $1 41 450000`))
+# 325k 11/02 24+11
+  ((total=$total + `vested $1 37 325000`))
+# 150k 9/04  48+9
+  ((total=$total + `vested $1 15 150000`))
+# 200k 12/05  60+12
+  ((total=$total + `vested $1  0 200000`))
+#  these are new -- has not been added into the script
+# 200k 5/07 
+# 200k 5/08 
+
+
+  echo total is $total
+
+  #((total=150000*($1+15)/48 + 325000*($1+37) + 450000*(41+$1)/48 + 200000*($1)/48))
+
+}
+
+shares $months
+
+exit 0
+
+echo 150k 9/04  48+9
+vested $months 15 150000
+echo 325k 11/02 24+11
+vested $months 37 325000
+echo 450k 7/02 - 24+7
+vested $months 41 450000
+echo 200k 12/05  60+12
+vested $months  0 200000
+
+
+

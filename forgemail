@@ -1,0 +1,38 @@
+#!/bin/sh
+# forge mail
+
+timeout=15
+case $1 in
+'')     echo "Usage: forgemail [-t timeout] <sender> <recipient> <subject> <file>";exit ;;
+'-t') timeout=$2 ; shift; shift ;;
+esac
+#(echo helo `hostname`
+(echo helo wavemarket.com
+ sleep 1
+ echo mail from: $1
+ sleep 1
+ echo rcpt to: $2
+ sleep 1
+ echo data
+ sleep 1
+ echo From: $1
+ sleep 1
+ echo Message-Id: 1234567890.`date +%m%d%H%M%S`.AB1234@satanvax.EDU
+ sleep 1
+ echo Subject: $3
+ sleep 1
+ echo To: $2
+ sleep 1
+ echo ''
+ sleep 1
+ cat $4
+ sleep 1
+ echo .
+ sleep 1
+ echo quit
+ sleep $timeout
+) | telnet mail.wavemarket.com 25 >/dev/null
+##) | telnet smtp.eecs.berkeley.edu 25 >/dev/null
+##) | telnet south.cs.berkeley.edu 25 >/dev/null
+
+unset timeout

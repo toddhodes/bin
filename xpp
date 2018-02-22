@@ -1,0 +1,10 @@
+#!/bin/sh
+#
+# XML pretty print  
+# a quick hack by todd
+#
+
+TINDER=/ext/build/common/releases/2.14/debian-3.1
+CLASSPATH=$TINDER/wmutils/lib/wmutils.jar:$TINDER/tps/java/jars/log4j/dist/lib/log4j-1.2.8.jar:$TINDER/tps/java/jars/jdom/jdom.jar
+
+java -cp $CLASSPATH com.wavemarket.wmutils.xml.XMLPrettyPrint "$@"

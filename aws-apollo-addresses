@@ -1,0 +1,24 @@
+#!/bin/bash
+#
+
+case "$1" in
+"") ev="todd latest beta avast" ;;
+*) ev=$1 ;;
+esac
+
+echo "# workon apollo-deploy"
+
+for i in $ev
+do
+   echo "is '$i'"
+   if [ "$i" = "avast" ]; then prof=prod; else prof=dev; fi
+
+   echo "$i($prof):"
+   echo -n bastion.$i:
+   aws --profile apollo-$prof-admin --region us-west-2 ec2 describe-instances --filters "Name=tag:Name,Values=bastion.$i" 'Name=instance-state-name,Values=running' | jq -r '.Reservations[0].Instances[0].PublicIpAddress'
+   echo -n managers.$i:
+   aws --profile apollo-$prof-admin --region us-west-2 ec2 describe-instances --filters "Name=tag:Name,Values=managers.$i" 'Name=instance-state-name,Values=running' | jq -r '.Reservations[0].Instances[0].PrivateIpAddress'
+   echo -n workers.$i:
+   aws --profile apollo-$prof-admin --region us-west-2 ec2 describe-instances --filters "Name=tag:Name,Values=workers.$i" 'Name=instance-state-name,Values=running' | jq -r '.Reservations[0].Instances[0].PrivateIpAddress'
+done
+

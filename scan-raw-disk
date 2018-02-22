@@ -1,0 +1,3 @@
+for i in $(perl -e 'foreach (27000 .. 27213) { print "$_ "; }' ); do  out=`dd if=/dev/hda bs=1M skip=$i count=1 2>/dev/null | strings | grep "<LAYER"` ;
+if [ ! -z "$out" ] ; then echo $i ; fi done
+

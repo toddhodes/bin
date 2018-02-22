@@ -1,0 +1,5 @@
+
+for i in `set|grep emacs|cut -d= -f1`
+do
+  export $i=vi
+done

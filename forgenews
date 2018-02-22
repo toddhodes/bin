@@ -1,0 +1,22 @@
+# forge mail
+
+case $1 in
+'')     echo "Usage: forgenews <group(s)> <subject> <sender> <file>.";exit ;;
+esac
+(echo post 
+ echo Newsgroups: $1 
+ echo From: $3
+ echo Originator: $3
+ echo Sender: $3
+ echo Subject: $2
+ echo ''
+ echo ''
+ cat $4
+ echo ''
+ echo '---'
+ cat .anonsig
+ echo ''
+ echo .
+ echo quit
+ sleep 4
+) | telnet murdoch.acc.virginia.edu 119 >/dev/null

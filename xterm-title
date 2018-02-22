@@ -1,0 +1,29 @@
+
+
+### this is now a dotitle () function in .bashrc 
+### i.e., this shouldn't be called !
+
+#echo -n "]2;"$1""
+#echo -n "]1;"$1""
+echo -n "]0;"$1""
+
+
+
+##  ------- use to be something way different ...
+
+#!/bin/ksh
+#
+#  automatic xterm time labeling
+
+# Needs to be modified so one process does them all
+
+#(
+#if [ "$TERM" = "xterm" ] ; then
+#   (while (true)
+#   do
+#       #xtattr -title $HOST" : `date | cut -c1-16`"
+#       xtattr -title " `date | cut -c1-16`"
+#       sleep 55
+#   done) &
+#fi
+# 

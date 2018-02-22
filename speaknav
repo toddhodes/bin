@@ -1,0 +1,52 @@
+#!/bin/sh
+
+server="http://askwheredemo2:8080/navserver/client"
+server="http://aws-web/navserver/client"
+server="http://aw-web/navserver/client"
+server="http://frijole3:8080/navserver/client"
+server="http://aw-spain.wavemarket.com/navserver/client"
+navpath=/ext/build/navigation_server/latest/tinderbuilds/latest/debian-3.1/server/bin
+
+## speaknav script
+## points at tinderbox for navRequest and navResponse
+## uses mpg321 and bplay to play the audio
+## (apt-get install mpg321 bplay)
+rm /tmp/audio0.mp3 /tmp/audio0.wav
+
+fmt=mp3
+
+dashe=-i
+if [ "$1" == "-e" ]
+then
+    dashe=-e
+    shift
+fi
+
+if [ "$1" == "-f" ]
+then
+    shift
+    fmt=$1
+    shift
+fi    
+
+if [ "$1" == "-g" ]
+then
+	noplay=echo
+	shift
+else 
+	noplay=
+fi
+
+echo "using $server"
+
+date
+$navpath/navRequest -A $dashe "$*" -f $fmt | time POST -C 8378:nav1gat3 "$server" | $navpath/navResponse
+#$navpath/navRequest -A $dashe café -f $fmt | time POST -C 8378:nav1gat3 "$server" | $navpath/navResponse
+date
+if [ "$fmt" = "mp3" ]
+then
+	$noplay mpg321 /tmp/audio0.mp3
+elif [ "$fmt" = "wav" ]
+then
+	$noplay bplay /tmp/audio0.wav
+fi	

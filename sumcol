@@ -1,0 +1,4 @@
+case $1 in
+"") echo "usage: $0 <column to add>" ; exit;;
+esac
+awk '{ a+=$'$1' } END{printf("total: %d\n",a)}'

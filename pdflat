@@ -1,0 +1,43 @@
+
+
+MYTEX=pdflatex
+FILE=$1
+
+case $1 in
+"") echo "Usage: $0 <filename>"; exit 1 ;;
+esac
+
+base=`basename $FILE .tex`
+basepdf=$base-ToPDF
+
+
+cp $base.bbl $base-ToPDF.bbl
+
+inputs=`grep \\input $base.tex | grep -v ^% |cut -d"{" -f2 | cut -d"}" -f1`
+
+sed 's/\\input{\(.*\)}/\\input{\1-ToPDF}/' $base.tex > $basepdf.tex
+
+for i in $base $inputs
+do 
+  echo $i.tex
+  sed 's/figure=\(.*\)\.eps/figure=\1\.pdf/' $i.tex >  $i-ToPDF.tex
+  for j in `grep 'figure\=' $i.tex | sed 's/.*figure=\(.*\)\.eps.*/\1/'`
+  do
+    echo "converting $j"
+    echo epstopdf $filenm.eps
+    epstopdf $j.eps 
+  done
+done
+
+$MYTEX $basepdf.tex
+cp $basepdf.pdf $base.pdf
+
+for i in $base $inputs
+do 
+  echo rm $i-ToPDF.tex
+  rm $i-ToPDF.tex
+done
+rm $basepdf.pdf 
+
+###ghostview $base.ps
+#xdvi $base.dvi

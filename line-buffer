@@ -1,0 +1,6 @@
+LD_PRELOAD=/ext/home/todd/lib/line-buffer.so "$@"
+
+## eg,
+# tail -f /var/log/apache2/access.log | line-buffer cut -d' ' -f1 | uniq
+
+

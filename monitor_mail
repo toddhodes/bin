@@ -1,0 +1,5 @@
+#!/bin/sh
+messages=`egrep $1 /var/log/syslog | egrep 'to' | grep -v \< | awk '{print $6}' | tr '\012' '|'`
+egrep -e $messages /var/log/syslog | egrep 'from' |awk '{print $6,$1,$2,$3,$7}' | grep -v $1
+messages=`egrep $1 /var/log/syslog | egrep 'from' | grep -v \< | awk '{print $6}' | tr '\012' '|'`
+egrep -e $messages /var/log/syslog | awk '{print $6,$1,$2,$3,$7}' | grep 'to' | sort

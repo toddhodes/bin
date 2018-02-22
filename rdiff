@@ -1,0 +1,45 @@
+
+# diff files, allowing ssh's scp-style remote hos specification
+#
+# optionally invoke tkdiff on them w/ intelligent file names
+
+if [ $# -ne 2 ]
+then
+  echo "usage: $0 <local/remote-filespec> <local/remote-filespec>" 
+  exit
+fi
+
+
+dir=/tmp/.rdiff.$RANDOM.$RANDOM
+#echo - mkdir $dir
+if ! mkdir $dir 2>/dev/null 
+then 
+  echo "can't create $dir!"
+  exit
+fi
+
+newName1=`echo $1 | tr "/" "." | sed 's/:/.-./g' `
+newName2=`echo $2 | tr "/" "." | sed 's/:/.-./g' `
+
+# commit!
+trap "echo 'trapping signal for cleanup.'; cd $dir; rm -f $newName1 $newName2; rmdir $dir; exit 1" 1 2 3 9 15
+
+
+#1
+#echo - scp $1 $dir/$newName1
+scp $1 $dir/$newName1
+
+#2
+#echo - scp $2 $dir/$newName2
+scp $2 $dir/$newName2
+
+cd $dir
+#echo - tkdiff $newName1 $newName2
+tkdiff $newName1 $newName2
+
+cd $dir
+#echo - /bin/rm -f $newName1 $newName2
+/bin/rm -f $newName1 $newName2
+#echo - rmdir $dir
+rmdir $dir
+

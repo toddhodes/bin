@@ -1,0 +1,25 @@
+#!/bin/sh
+# path trick for wish variants \
+exec smash $0 ${1+"$@"}
+
+global env mash
+set env(TCLCL_IMPORT_DIRS) http://www-mash.CS.Berkeley.EDU/mash/software/mashlets/5.0b2/
+
+global argv argv0
+if {[llength $argv] < 2} {
+    puts "Usage: $argv0 <spec> msg"
+	exit
+}
+set spec [lindex $argv 0]
+set msg [lrange $argv 1 end]
+
+import AnnounceListenManager
+AnnounceListenManager public recv_announcement  {a b c d} {}
+Log set name_ "[file tail $argv0]"
+
+puts "sending to $spec"
+set al [new AnnounceListenManager $spec]
+$al announce "$msg"
+
+after idle "exit"
+vwait forever

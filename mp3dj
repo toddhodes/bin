@@ -1,0 +1,2369 @@
+#!/bin/sh
+# -*- tcl -*- \
+exec wish8.0 $0 $@
+
+# preferences (can be set with mp3dj or by hand in ~/.mp3conf)
+set prefs(playbinary) "mpg123"
+set prefs(extraflags) ""
+set prefs(bufsize) 0
+set prefs(bufdelay) 0
+set prefs(playOnStart) 0
+set prefs(showHelp) 1
+set prefs(shuffle) 1
+set prefs(reject) 1
+set prefs(playHook) {}
+set prefs(title) "Assorted Music"
+set prefs(version) 1.0
+set prefs(debug) 0
+set prefs(debugFilename) ""
+set prefs(debugFD) stderr
+set prefs(winHackTimeout) 300
+
+# global info
+set state(mode) ""
+set state(nsongs) ""
+
+# global info (usually on a per song basis)
+set info(buffer) 0
+set info(framenum) 0
+set info(remaining) 0
+set info(errors) 0
+set info(secs) 0
+set info(fd) 0
+set info(artist) Mp3dj
+set info(title) "Version 1.0"
+set info(file) ""
+set info(songnum) 0
+
+# for some reason, on hpux need to use gcat
+if {$tcl_platform(os) == "HP-UX"} {
+    set iprefs(cat) "|& gcat"
+} elseif {$tcl_platform(platform) == "windows"} {
+    set iprefs(cat) ""
+} else {
+    set iprefs(cat) "|& cat";
+}
+
+if [catch {package require http} m] {
+    puts stderr "can't load http package: $m"
+    exit 1
+}
+
+proc http_tsize {token} {
+    variable $token
+    upvar 0 $token state
+    return $state(totalsize)
+}
+
+proc capitalize {string} {
+    set result ""
+    foreach word $string {
+	lappend result [join [list [string toupper [string index $word 0]] [string range $word 1 end]] ""]
+    }
+    return $result
+}
+
+proc parsesong {file artist title} {
+    global info
+
+    upvar $artist a
+    upvar $title t
+
+    set l [split [file rootname [file tail $file]] "-"]
+    set info(directory) [file dirname $file]
+
+    regsub -all "_" [lindex $l 0] " " a
+    regsub -all "_" [lrange $l 1 end] " " t
+    
+    set a [capitalize $a]
+    set t [capitalize $t]
+}
+
+
+proc readAllDirs {} {
+    global mp3dirs mp3urls state songs orig songlist info
+
+    Display "reading directories..."
+
+    set songlist {}
+
+    foreach d $mp3dirs { 
+	readdir $d
+    }
+    foreach u $mp3urls {
+	readurls $u
+    }
+
+    Display "sorting songs..."
+
+    # Sort songs and build song array
+    set songlist [lsort -ascii $songlist]
+
+    set state(nsongs) 0
+    if [info exists songs] {unset songs}
+    if [info exists orig] {unset orig}
+
+    set a2 ""
+    set t2 ""
+
+    foreach song $songlist {
+	set a [lindex $song 0]
+	set t [lindex $song 1]
+	set f [lindex $song 2]
+	if {!($a == $a2 && $t == $t2)} {
+	    set songs($state(nsongs)) [list $f $state(nsongs)]
+	    set orig($state(nsongs)) $f
+	    incr state(nsongs)
+	    set a2 $a
+	    set t2 $t
+	} else {
+	    #puts stderr "dup: $f"
+	}
+    }	
+    
+    unset songlist
+
+    if {$state(nsongs) <= 0} {
+	songErrorBox
+	return
+    }
+    
+    set state(index) 0
+    updateSongList
+
+    Display "$info(artist) / $info(title)"
+}
+
+
+proc readdir {d} {
+    global songlist 
+    
+    foreach f [lsort [glob -nocomplain $d/*.mp*]] {
+	parsesong $f artist title
+
+	if {! [rejected $artist $title]} {
+	    lappend songlist "\{$artist\} \{$title\} $f"
+	}
+    }
+}
+
+proc readurls {url} {
+    global songlist httpDone
+
+    set ndots 0
+    set dots "    "
+    set dir 1
+
+    Display  " $dots  $url"
+
+    set httpDone 0
+    if [catch {http::geturl $url -command {global httpDone; set httpDone 1;}} h] {
+	Display "error: $h"
+	bell
+	after 2000 
+	return
+    }	
+    
+    while {! $httpDone} {
+	set dots ""
+	if $dir {
+	    set ndots [expr $ndots+1]
+	    for {set i 0} {$i < $ndots} {incr i} {
+		set dots "${dots}."
+	    }
+	    for {} {$i < 4} {incr i} {
+		set dots "${dots} "
+	    }
+	    if {$ndots == 4} {
+		set dir 0
+	    }
+	} else {
+	    set ndots [expr $ndots-1]
+	    for {set i 0} {$i < [expr 4-$ndots]} {incr i} {
+		set dots "${dots} "
+	    }
+	    for {} {$i < 4} {incr i} {
+		set dots "${dots}."
+	    }
+	    if {$ndots == 0} {
+		set dir 1
+	    }
+	}
+
+	Display " $dots  $url"
+	after 100
+    }
+
+    set code [lindex [http::code $h] 1]
+    if {$code != 200} {
+	Display "error: [http::code $h]"
+	bell
+	after 2000 
+	return
+    }
+    set list [http::data $h]
+    regsub -all {<br>|<BR>|<p>|<P>} $list \n list
+    set list [split $list "\n"]
+    http::Finish $h
+
+    foreach line $list {
+	set match [regexp {[hH][rR][eE][fF]="(.*\.mp.)"} $line unused f]
+	if $match {
+	    # remove escaped characters
+	    regsub {&amp;} $f {\&} f
+
+	    parsesong $f artist title
+	    if {! [rejected $artist $title]} {
+		lappend songlist "\{$artist\} \{$title\} $url$f"
+	    }
+	}
+    }
+}
+	    
+proc songErrorBox {} {
+    global h12 h12b prefsIndex songs
+
+    option add *error*background gray71
+    option add *error*Button*background antiquewhite3
+
+    set error "No songs were found because the directories and/or urls in \
+	    your playlist are invalid.  Edit your playlist in the \
+	    Preferences box and re-read the playlist.  Be sure to save \
+	    these changes once they are correct"
+
+    set w [toplevel .error]
+    label .error.title -text "ERROR" -anchor w -font $h12b
+    label .error.text -text $error -anchor w -font $h12 -justify left -wraplength 3i
+    button .error.button -text "Ok" -command {set modalDone 1} -padx 10
+
+    pack .error.title .error.text .error.button -side top -pady 5 -padx 5
+    pack config .error.text -expand 1 -fill both
+    
+    # place the prefs smack dab in the middle of the screen
+
+    wm withdraw .error
+    update idletasks
+    set x [expr [winfo screenwidth .error]/2 - [winfo reqwidth .error]/2 \
+	    - [winfo vrootx [winfo parent .error]]]
+    set y [expr [winfo screenheight .error]/2 - [winfo reqheight .error]/2 \
+	    - [winfo vrooty [winfo parent .error]]]
+    wm geom .error +$x+$y
+    wm deiconify .error
+
+    bell
+
+    tkwait variable modalDone
+    destroy .error
+
+    resetPrefs
+    set prefsIndex 2
+    wm deiconify .prefs
+
+    set songs(0) "{} 0"
+}
+
+
+
+proc rejected {artist title} {
+    global rejects
+
+    if [info exists rejects(a:$artist)] {
+	return 1
+    }
+    if [info exists rejects($artist)] {
+	foreach r $rejects($artist) {
+	    if [string match $r $title] {
+		return 1
+	    }
+	}
+    }
+    return 0
+}
+
+proc shuffle {} {
+    global state songs info
+
+    Display "shuffling songs..."
+    
+    for {set i 0} {$i < [expr 5 * $state(nsongs)]} {incr i} {
+ 	set r1 [expr int($state(nsongs) * rand())]
+ 	set r2 [expr int($state(nsongs) * rand())]
+	
+ 	set temp $songs($r1) 
+ 	set songs($r1) $songs($r2)
+ 	set songs($r2) $temp
+    }
+
+    set state(index) 0
+    Display "$info(artist) / $info(title)"
+
+}
+
+
+# Windows hack used to read from the mpg123 pipe
+# since non-blocking file IO and events are not
+# supported
+
+set winHackID 0
+set winHackDone 0
+
+proc windows_hack {id} {
+    global haveHeader winHackDone prefs
+        
+    catch {play_handler}
+
+    if {$winHackDone == $id} {
+	return;
+    }
+
+    after $prefs(winHackTimeout) windows_hack $id
+}
+
+proc play_handler {} {	
+    global header_buf haveHeader info prefs
+    
+    if {! [info exists header_buf]} {set header_buf ""}	
+    if {! [info exists haveHeader]} {set haveHeader 0}
+
+    if {[eof $info(fd)]} {
+	# the program exited unexpectedly
+	debug "EOF"
+	stop; next; play;
+    }
+
+    # First read in the header
+    while {!$haveHeader} {
+	set buf [gets $info(fd)]
+	set len [string length $buf]
+
+	# Some mp3's have non-standard headers that contain misc. data 
+	# which confuses mpg123
+	if {[string first "Illegal" $buf] >= 0} {
+	    continue;
+	}
+	append header_buf $buf " "
+
+	set index [string last "Extension value:" $buf]
+	if {$index != -1} {
+	    debug $header_buf
+	    set haveHeader 1
+	    parse_header
+	    return
+	}
+	continue
+    }
+
+    debug "gets"
+    set time [time {set buf [gets $info(fd)]}]
+    set len [string length $buf]
+
+    debug "$time $len"
+    debug $buf
+
+    if {$buf == ""} {
+	return
+    }
+
+    # check for errors openning audio device
+    set error1 [string last "audio" $buf]
+    set error2 [string last "Can't open" $buf]; # Linux error
+    set error3 [string last "Device busy" $buf]; # HPUX error
+    if {$error1 != -1 || $error2 != -1 || $error3 != -1} {
+	stop
+#	Display "ERROR opening audio device"
+#	bell
+#	after 2000 
+#	Display "$info(artist) / $info(title)"
+	after 500 play
+	stop
+	return
+    }
+
+    # see if we are done playing
+    set index1 [string last "exiting" $buf]
+    set index2 [string last "EOF" $buf]
+    set index3 [string last "No such file or directory" $buf]
+    set index4 [string last "request failed" $buf]
+    set index5 [string last "Bad file descriptor" $buf]
+    if {$index1 != -1 || $index2 != -1 || $index3 != -1 || $index4 != -1 || $index5 != -1} {
+	stop; next; play;
+	return
+    }
+
+    # see if there is an error
+#     set index1 [string last "illegal" $buf]
+#     set index2 [string last "rewind" $buf]
+#     if {$index1 != -1 || $index2 != -1} {
+# 	incr info(errors)
+# 	set info(layer) "[lindex $info(layer) 0]   e:$info(errors)"
+# 	updateBufPercent
+# 	return
+#     } 
+
+    # any other data most likely is frame and memory info
+    if [regexp {{ *([0-9]*)} *([0-9]*)} $buf match info(framenum) memsize] {
+	set secs [expr [frames2secs $info(framenum)]-[mem2secs $info(buffer)]]
+	updateTime $secs
+
+	if {$prefs(bufsize)>0 && $memsize != ""} {
+	    set info(buffer) $memsize
+	    updateBufPercent
+	} 
+
+ 	if {[wm state .] ==  "iconic"} {
+	    wm title . "$info(artist) / $info(title) $info(time)"
+	}
+	update
+    } 
+
+    # see if we are done decoding
+    set index [string last "finished." $buf]
+    if {$index != -1} {
+	set info(framenum) done
+	update
+	return
+    }
+
+    return
+}
+
+proc parse_header {} {
+    global header_buf info
+    regsub -all "," $header_buf " " header_buf
+
+    set temp [string range $header_buf [string last Playing $header_buf] end]
+    scan $temp "Playing MPEG stream from %s" info(filename)
+    set temp [string range $header_buf [string last Layer $header_buf] end]
+    scan $temp "Layer: %s," info(layer)
+    set temp [string range $header_buf [string last Freq $header_buf] end]
+    scan $temp "Freq: %d" info(freq)
+    set temp [string range $header_buf [string last mode: $header_buf] end]
+    scan $temp "mode: %s" info(mode); 
+    set temp [string range $header_buf [string last Channel $header_buf] end]
+    scan $temp "Channels: %d" info(channels)
+    set temp [string range $header_buf [string last Bitrate $header_buf] end]
+    scan $temp "Bitrate: %d" info(kbitrate)
+
+    set info(freq_display) [format "%.1f kHz" [expr $info(freq) / 1000.0]]
+    set info(bitrate_display) "$info(kbitrate) kbit/s"
+
+    if {[string match "*tereo*" $info(mode)]} {
+	set info(mode) "Stereo"
+    } elseif {[string match "*dual*" $info(mode)]} {
+	set info(mode) "Dual"
+    } else {
+	set info(mode) "Mono"
+    }
+
+    set byterate [expr $info(kbitrate) * 125]
+
+    if [catch {file size $info(file)} len] {
+	# http
+ 	set handle [http::geturl $info(file) -validate 1]
+ 	http::wait $handle
+
+ 	set len [http_tsize $handle]
+
+	# 	set info(songLength) 0
+	# 	set info(songLength_display) "HTTP"
+	set info(songLength) [expr $len / $byterate]
+	set info(songLength_display) "([formatTime $info(songLength)])"
+	set info(layer) "$info(layer) *"
+
+    } else {
+	# normal mode
+	set info(songLength) [expr $len / $byterate]
+	set info(songLength_display) "([formatTime $info(songLength)])"
+    }
+
+    if [file exists [glob -nocomplain ~/.redo]] {
+	if {$info(kbitrate) < 128} {
+	    set fd [open [glob ~/.redo] a]
+	    puts $fd "$info(file)"
+	    flush $fd
+	    close $fd
+	}
+    }
+}
+
+
+proc close_stream {} {
+    global info tcl_platform
+
+    if {$tcl_platform(platform) == "windows"} {
+	global winHackDone winHackID
+	set winHackDone $winHackID
+    }
+
+	puts "killing ..."
+    catch {exec kill [lindex [pid $info(fd)] 0]}
+    catch {close $info(fd)}
+}    
+
+proc nextIndex {} {
+    global prefs state
+
+    incr state(index)
+#     if {$prefs(shuffle)} {
+# 	incr index
+#     } else {
+# 	set index [expr int($nsongs * [expr rand()])]
+
+#     }
+}
+
+proc prev {} {
+	global state
+	incr state(index) -2
+	next
+}
+
+
+proc next {} {
+    global prefs info state songs
+
+    if {$info(errors) > 0} {
+	if [file exists [glob -nocomplain ~/.mp3errors]] {
+	    set info(fd) [open [glob ~/.mp3errors] a]
+	    puts $info(fd) "$info(file)"
+	    flush $info(fd)
+	    close $info(fd)
+	}
+    }
+
+    if {$state(index) >= $state(nsongs)} {
+     	if {$prefs(shuffle)} {
+     	    shuffle;
+     	} else {
+     	    set state(index) 0
+     	}
+    }
+    
+    # check for beginning of playlist
+    if {$state(index) < 0} {
+	set state(index) [expr $state(nsongs) - 1]
+    }
+
+    # find next song (that isn't rejected)
+    while 1 {
+	set info(file) [lindex $songs($state(index)) 0]
+	parsesong $info(file) info(artist) info(title)
+	
+	if [rejected $info(artist) $info(title)] {
+	    nextIndex
+	} else {
+	    break;
+	}
+    }
+
+    Display "$info(artist) / $info(title)"
+    if {[wm state .] ==  "iconic"} {
+	wm title . "$info(artist) / $info(title)"
+    }
+
+    set info(oldstate) $state(mode)
+    stop
+
+    if {$info(oldstate) == "playing"} {
+	play
+    }
+
+    # update display
+    set info(path) [file dirname $info(file)]
+    set info(freq_display) ""
+    set info(mode) "" 
+    set info(bitrate_display) ""
+    set info(layer) ""
+    #set info(index_display) "Index: [expr $state(index)+1]"
+    set info(index_display) "[expr $state(index)+1] / $state(nsongs)"
+    set info(songLength_display) "(0:00)"
+    set info(errors) 0
+
+    set info(songnum) [lindex $songs($state(index)) 1]
+
+    .songs.l.lbox see $info(songnum)
+    .songs.l.lbox selection clear 0 end
+    .songs.l.lbox selection set $info(songnum)
+
+    nextIndex
+}
+
+proc play {{startFrame 0}} {
+    global state info prefs haveHeader header_buf iprefs tcl_platform
+
+    if {$state(mode) == "paused"} {
+	set startFrame $info(framenum)
+    }
+
+    if {$state(mode) == "stopped" || $state(mode) == "paused"} {
+	set info(buffer) 0
+	set info(framenum) 0
+	set header_buf ""
+	set haveHeader 0
+	set state(mode) playing
+
+	debug "\n\n*************\nplay: $info(artist) / $info(title) / $info(file)"
+
+	if {$tcl_platform(os) == "BSD/OS"} {
+		after 2000
+		set info(fd) [open "|$prefs(playbinary) -k $startFrame $info(file)" r]
+		#puts "|$prefs(playbinary) -k $startFrame $info(file)"
+		puts "--"
+		set psOut "[exec ps auxww]"
+		foreach i [split $psOut "\n"] {
+			if {[string first mpg123 $i] != -1} {
+				puts "$i"
+			}
+		}
+	} else {
+		set info(fd) [open "|$prefs(playbinary) -vv -y -k \
+			$startFrame -b $prefs(bufsize) -l $prefs(bufdelay) \
+			$prefs(extraflags) $info(file) $iprefs(cat)" r]
+	}
+	fconfigure $info(fd) -buffering line -translation auto
+
+	if {$tcl_platform(platform) == "unix"} {
+	    fconfigure $info(fd) -blocking 0
+	    fileevent $info(fd) readable {play_handler}
+	}
+
+	if {$tcl_platform(platform) == "windows"} {
+	    global winHackID
+	    incr winHackID
+	    after 10 windows_hack $winHackID
+	}
+    }
+    
+    if {$prefs(playHook) != {}} {
+	foreach cmd $prefs(playHook) {
+	    uplevel #0 $cmd
+	}
+    }
+}
+
+proc fastforward {start} {
+    global state info prefs iprefs tcl_platform
+
+    if {$start} {
+	set info(oldstate) $state(mode)
+	set f $info(framenum)
+	stop
+	if {$tcl_platform(os) == "BSD/OS"} {
+		set info(fd) [open "|$prefs(playbinary) -k $f $info(file)" r]
+		puts "|$prefs(playbinary) -k $f $info(file)"
+		set psOut "[exec ps auxww]"
+		foreach i [split $psOut "\n"] {
+			if {[string first mpg123 $i] != -1} {
+				puts "$i"
+			}
+		}
+    } else {
+		set info(fd) [open "|$prefs(playbinary) -vv -y -d 4 -k $f \
+			$prefs(extraflags) $info(file) $iprefs(cat)" r]
+	}
+	if {$tcl_platform(platform) == "unix"} {
+	    fconfigure $info(fd) -blocking 0
+	    fileevent $info(fd) readable {play_handler}
+	}
+	set info(framenum) $f
+	set info(buffer) 0
+	set header_buf ""
+	set haveHeader 0
+	set state(mode) fastforward
+
+	if {$tcl_platform(platform) == "windows"} {
+	    global winHackID
+	    incr winHackID
+	    after 10 windows_hack $winHackID
+	}
+    } else {
+	set f $info(framenum)
+	stop
+	play $f
+    }
+}
+
+proc stop {} {
+    global state info  
+    
+    close_stream
+    set info(time) "0:00 "
+    set info(secs) 0
+    set info(framenum) 0
+    set info(buffer) 0; updateBufPercent
+    set state(mode) stopped
+}
+
+proc pause { } {
+    global state info
+
+    if {$state(mode) != "playing" && $state(mode) != "paused"} {
+	return;
+    }
+    
+    if {$state(mode) == "paused"} {
+	#exec kill -18 [lindex [pid $info(fd)] 0]
+	play $info(framenum)
+	
+	set state(mode) playing
+    } else {
+	#exec kill -19 [lindex [pid $info(fd)] 0]
+	close_stream
+	
+	set state(mode) paused
+	set info(buffer) 0
+	blink
+    }
+}
+
+proc reject what {
+    global configfile songs rejects info
+
+    set fd [open $configfile a]
+    if {$what == "song"} {
+	puts $fd "lappend \"rejects($info(artist))\" \"$info(title)\""
+	lappend rejects($info(artist)) $info(title)
+    }
+    if {$what == "artist"} {
+	puts $fd "set \"rejects(a:$info(artist))\" 1"
+	set rejects(a:$info(artist)) 1
+    }
+    flush $fd
+    close $fd
+    next
+}
+
+#
+# UI procs
+#
+
+set useIcons 0
+
+proc build_ui {} {
+    global prefs info h10 h10b h12 h12b h10bi useIcons xbm tcl_platform
+
+    if {$tcl_platform(platform) == "unix"} {
+	set h10 "-adobe-helvetica-medium-r-normal-*-10-*-*-*-*-*-*-*"
+	set h10b "-adobe-helvetica-bold-r-normal-*-10-*-*-*-*-*-*-*"
+	set h10bi "-adobe-helvetica-bold-o-normal-*-10-*-*-*-*-*-*-*"
+	set h12 "-adobe-helvetica-medium-r-normal-*-12-*-*-*-*-*-*-*"
+	set h12b "-adobe-helvetica-bold-r-normal-*-12-*-*-*-*-*-*-*"
+    }
+
+    if {$tcl_platform(platform) == "windows"} {
+	set h10 {helvetica 8}
+	set h10b {helvetica 8 bold}
+	set h10bi {helvetica 8 bold italic}
+	set h12  {helvetica 9}
+	set h12b  {helvetica 9 bold}
+    }
+
+    option add *Frame*background gray71
+    option add *highlightThickness 0
+    option add *Button*borderWidth 2
+    option add *Button*relief groove
+    option add *Button*background         antiquewhite3
+    option add *Button*activeBackground   antiquewhite3
+    option add *Button*Font               $h10b
+    option add *Button*padX               1m
+
+
+    pack propagate . 0
+    . config -bg gray71 -width 310 -height 78
+    wm title . "mp3dj - $prefs(title)"
+    bind . <Map> {wm title . "mp3dj - $prefs(title)"}
+    bind . <Unmap> {wm title . "$info(artist) / $info(title)"}
+
+    tk appname mp3dj
+
+    frame .f1 -bg gray71
+    label .f1.song -anchor w -text "" -bg gray71 -font $h10b
+    label .f1.time -text "0:00 " -textvariable info(time) \
+	    -bg gray71 -font $h12
+
+    button .f1.help -font $h10b -text ? -padx 3 -pady 0 -anchor nw -bg gray71 -activebackground gray78 -bd 0
+
+    frame .b -bg gray71
+
+    button .b.play -text "Play" -command "play"
+    button .b.stop -text "Stop" -command "stop"
+    button .b.pause -text "Pause" -command "pause"
+    button .b.ff -text "FFwd"
+    button .b.skip -text "Next" -command "next" 
+    # BAD! pulled outta pack too   
+    #button .b.prev -text "Prev" -command "prev" 
+    button .b.quit -text "Quit" -command "catch stop ; appExit"
+
+    if {$useIcons} {
+	set i [image create bitmap -data $xbm(play)]
+	.b.play config -image $i
+	set i [image create bitmap -data $xbm(pause)]
+	.b.pause config -image $i
+	set i [image create bitmap -data $xbm(close)]
+	.b.stop config -image $i
+	set i [image create bitmap -data $xbm(next)]
+	.b.skip config -image $i
+    }
+
+
+    pack .b.quit -side right -padx 1 -fill x -expand yes
+    pack .b.play .b.pause .b.stop .b.ff .b.skip \
+	    -padx 1 -side left -fill x -expand yes
+    if $prefs(showHelp) {pack .f1.help -side right}
+    pack .f1.time -side right 
+    pack .f1.song -side left -padx 3 -pady 3
+    pack .f1 -side top -fill x -expand yes
+    pack .b -side top -padx 2 -fill x -expand yes
+
+    bind .f1.time <ButtonPress-1> "toggleRemaining"
+    bind .b.ff <ButtonPress-1> "+fastforward 1"
+    bind .b.ff <ButtonRelease-1> "+fastforward 0"
+    bind .f1.song <Double-ButtonPress-1> "show_songlist"
+    bind .f1.song <ButtonPress-2> "ConstructPositionPopup %X %Y"
+
+    # Volume controls
+
+    label .value -textvariable gain -bg gray71 -font $h10b -width 2
+    scale .slider -command changevol -from 1 -to 100 \
+	    -showvalue false -variable gain -orient horizontal \
+	    -troughcolor gray65 -width 10 -bg grey71 \
+	    -highlightthickness 0 -bd 1 -resolution 1
+
+    if {$tcl_platform(platform) == "windows"} {
+	.slider config -resolution 2
+    }
+
+    pack .value -side left -padx 5
+    pack .slider -side left -fill both -expand 1 -padx 5 -pady 5
+
+    if {$tcl_platform(os) == "BSD/OS"} {
+	.slider set [lindex [split [exec mixer vol] ":"] 1]
+    }
+
+    # Mini buttons
+
+    button .i -command show_info -font $h10bi -text i -padx 3 -pady 0 -anchor nw
+    button .p -command show_prefs -font $h10bi -text p -padx 2 -pady 0 -anchor nw
+
+    if {$prefs(shuffle)} {
+	set s [image create bitmap -data $xbm(s)]
+	button .s -command "shuffle;next" -font $h10bi -text s -padx 3 -pady 0 -anchor nw
+	pack .s -side left -padx 1
+    }
+    if {$prefs(reject)} {
+	set x [image create bitmap -data $xbm(x)]
+	button .x -command "reject song; makeRejectList" -font $h10bi -text x -padx 3 -pady 0 -anchor nw
+	makeRejectBindings
+	pack .x -side left -padx 1
+    }
+    pack .p .i -side left  -padx 1
+}
+
+proc Display {string} {
+    .f1.song config -text $string
+    update
+}
+
+
+proc build_info_ui {} {
+    # Do mode info
+    toplevel .info
+    wm transient .info .
+    wm withdraw .info
+    wm protocol .info WM_DELETE_WINDOW show_info
+    wm group .info .
+
+    #scan [wm geom .] "%dx%d+%d+%d" w h x y
+    set x [winfo rootx .]
+    set y [winfo rooty .]
+    set w [winfo width .]
+    wm geometry .info "+[expr $x+$w+20]+$y"
+    global info 
+
+    set bgcolor antiquewhite3
+    set textcolor black
+
+    global h10 h10b h12 h12b h10bi
+    set sfont $h10
+    set rfont $h12b
+
+    option add *info.f.Label.background $bgcolor
+    option add *info.f.Label.foreground $textcolor
+    option add *info.f.Label.font $sfont
+
+    # Do Right part of display
+    set t .info.f
+    frame $t -bg $bgcolor -bd 2 -relief groove
+    pack $t -fill both -expand 1
+    wm title .info "song info"
+
+    # Do Frame and Buffer info
+    label $t.frame -font $rfont -textvariable info(framenum) -width 7 -anchor e
+    label $t.buffer -font $rfont -textvariable info(bufpcnt) -width 7 -anchor e
+    label $t.fl -text "FRAME" -width 7 -anchor e
+    label $t.bl -text "BUFFER" -width 7 -anchor e
+
+    grid $t.fl     -row 1 -column 0 -sticky ew -padx 5
+    grid $t.frame  -row 2 -column 0 -sticky ew -padx 5
+    grid $t.bl     -row 3 -column 0 -sticky ew -padx 5
+    grid $t.buffer -row 4 -column 0 -sticky ew -padx 5
+
+    # Do mode info
+    label $t.ml -font $sfont -text "MODE" -width 14
+    label $t.freq -textvariable info(freq_display)
+    label $t.mode -textvariable info(mode)
+    label $t.bitrate -textvariable info(bitrate_display)
+    label $t.layer -textvariable info(layer)
+    label $t.index -textvariable info(index_display)
+    label $t.len -textvariable info(songLength_display)
+
+    grid $t.ml      -row 1 -column 1 -columnspan 2 -sticky ew -padx 5
+    grid $t.freq    -row 2 -column 1 -padx 5
+    grid $t.mode    -row 2 -column 2 -padx 5
+    grid $t.bitrate -row 3 -column 1 -sticky ew
+    grid $t.layer   -row 3 -column 2 -sticky ew
+    grid $t.index   -row 4 -column 1 -sticky ew
+    grid $t.len     -row 4 -column 2 -sticky ew
+    
+    grid rowconfigure $t 0 -weight 0 -minsize 5
+    grid rowconfigure $t 1 -weight 1
+    grid rowconfigure $t 2 -weight 1
+    grid rowconfigure $t 3 -weight 1
+    grid rowconfigure $t 4 -weight 1
+    grid rowconfigure $t 5 -weight 1 -minsize 5
+
+    grid columnconfigure $t 0 -weight 4
+    grid columnconfigure $t 1 -weight 3
+    grid columnconfigure $t 2 -weight 3
+}
+
+proc show_info {} {
+    if {[wm state .info] == "withdrawn"} {
+	scan [wm geom .] "%dx%d+%d+%d" w h x y
+	wm geometry .info "+[expr $x+$w+20]+$y"
+	wm deiconify .info
+    } else { 
+	wm withdraw .info
+    }
+}
+
+proc build_songlist_ui {} {
+    global info h10 h10b h12 h12b h10bi
+
+    # Do mode info
+    toplevel .songs
+    wm transient .songs .
+    wm withdraw .songs
+    wm protocol .songs WM_DELETE_WINDOW show_songlist
+    wm group .songs .
+    wm title .songs "playlist"
+
+    update
+
+    set l [slistbox .songs.l]
+    pack $l -expand 1 -fill both
+
+    set lbox $l.lbox
+    $l.lbox config -width 48 -font $h10b
+    bind $lbox <Double-1> "gotoSong \[$lbox curselection\]; play"
+    #    $lbox config -bg gray90
+}
+
+proc gotoSong {s} {
+    global songs state
+
+    # search for song... expensive, but not used very often
+
+    for {set i 0} {$i < $state(nsongs)} {incr i} {
+	if {[lindex $songs($i) 1] == $s} {
+	    set state(index) $i
+	    break
+	}
+    }
+    next
+}
+
+proc show_songlist {} {
+    global info
+
+    if {[wm state .songs] == "withdrawn"} {
+	scan [wm geom .] "%dx%d+%d+%d" w h x y
+	set height [winfo height .songs]
+	if {$y > 512} {
+	    wm geometry .songs "+$x+[expr $y - $height - 45]"
+	} else {
+	    wm geometry .songs "+$x+[expr $y + $h + 20]"
+	}
+
+	.songs.l.lbox see $info(songnum)
+	.songs.l.lbox selection clear 0 end
+	.songs.l.lbox selection set $info(songnum)
+
+	wm deiconify .songs
+    } else { 
+	wm withdraw .songs
+    }
+}
+
+proc updateSongList {} {
+    global info songs orig state 
+
+    set l .songs.l.lbox
+    $l delete 0 end
+    for {set i 0} {$i < $state(nsongs)} {incr i} {
+	parsesong $orig($i) artist title
+	$l insert end "$artist / $title"
+    }
+}
+
+proc slistbox {path} {
+    set p $path
+    set path [string range $path 1 end]
+
+    option add *${path}*highlightThickness 0
+    option add *${path}*borderWidth        1
+    option add *${path}*Frame*background gray71
+    option add *${path}*Scrollbar*background         antiquewhite3
+    option add *${path}*Scrollbar*activeBackground   antiquewhite3
+    option add *${path}*Scrollbar*troughColor        gray71
+    option add *${path}*Listbox*background           gray71
+    option add *${path}*Listbox*activeBackground     gray71
+    option add *${path}*Listbox*selectBackground     antiquewhite3
+    option add *${path}*Listbox*selectForeground     black
+
+    frame $p
+    frame $p.top
+    frame $p.bot
+
+    listbox $p.lbox -relief sunken -setgrid 1 \
+	    -yscrollcommand "$p.vert set" -xscrollcommand "$p.horiz set" \
+	    -exportselection 0 
+
+    scrollbar $p.vert -orient vertical -command "$p.lbox yview" -width 15
+    scrollbar $p.horiz -orient horizontal -command "$p.lbox xview" -width 12
+
+    frame $p.nop -width [expr [winfo reqwidth $p.vert]] \
+	    -height [expr [winfo reqheight $p.horiz]-1]
+
+    pack $p.vert $p.lbox -in $p.top -fill both -side right
+    pack configure $p.lbox -expand yes
+    pack $p.horiz $p.nop -in $p.bot -fill both -side left
+    pack configure $p.horiz -expand yes
+
+    pack $p.bot $p.top -in $p -fill both -side bottom
+    pack configure $p.top -expand yes
+
+    return $p
+}
+
+proc show_prefs {} {
+    if {[wm state .prefs] == "withdrawn"} {
+	resetPrefs
+	wm deiconify .prefs
+    } else { 
+	wm withdraw .prefs
+    }
+}
+
+# Begin 
+#
+# Known "Issues"
+#
+# can't do a tab-config
+# buttonRelease works even if cursor leaves tab
+# doesn't do sideways tabs, or multilayer tabs
+# Can't change tabs, etc once they are set up
+
+namespace eval NotebookWidget {
+
+# The valid widget commands 
+set commands {configure cget index addTab addFrame addCommand tabPress}
+
+# The valid widget configuration options
+set options {
+    -height -width -tabheight -tabwidth -tabipadx -tabpadx
+    -bd -canvasbg -bg -bgl -bgd -fg -variable -font
+}
+
+# Defaults for the options listed above
+set defaults(-height) 200
+set defaults(-width) 400
+set defaults(-tabheight) 30
+set defaults(-tabwidth) 0
+set defaults(-font) {Helvetica -12 bold}
+set defaults(-bd) 2
+set defaults(-canvasbg) gray87
+set defaults(-bg) gray87
+set defaults(-bgl) gray98 
+set defaults(-bgd) gray50
+set defaults(-fg) black
+set defaults(-tabipadx) 5
+set defaults(-tabpadx) 5
+set defaults(-variable) {}
+
+# This command is exported outside this module
+proc notebook {n args} {
+    eval newWidget $n $args
+}
+
+# Creates a new notebook widget
+#
+proc newWidget {n args} {
+    variable options 
+    variable defaults
+
+    # Initialize widget options to defaults
+    foreach o $options {
+	vset $n $o $defaults($o)
+    }
+
+    eval configure $n $args
+    getMemberVars $n
+    
+    # Create canvas that contains notebook
+    set pad 2
+    incr height [expr 2*$pad]
+    incr width [expr 2*$pad]
+    canvas $n -height $height -width $width -bg $canvasbg -highlightthickness 0
+    bind $n <Configure> "NotebookWidget::resizeContentsFrame $n"
+
+    # Create the frame which holds the notebook's "contents"
+    vset $n pad $pad
+    createContentsFrame $n frame frame_ids 
+    vset $n frame $frame
+    vset $n frame_ids $frame_ids
+
+    # Initialize some values for the notebook
+    vset $n numtabs 0
+    vset $n activeTab -1
+    vset $n tabOffset [expr $pad+$bd]
+    vset $n callback 0
+    # Export the canvas's name as the notebook's widget procedure
+    if {[info commands _$n] != ""} {
+	rename _$n ""
+    }
+    rename $n _$n
+    proc $n {command args} "eval widgetCommand \$command $n \$args"
+    namespace export $n
+    namespace eval [namespace parent] "namespace import NotebookWidget::$n"
+
+    return $n
+}
+
+# Called when the user invokes a command on a notebook widget
+# Checks to make sure command is valid, then dispatches command.
+#
+proc widgetCommand {command n args} {
+    variable commands
+
+    if {[lsearch  $commands  $command] < 0} {
+	error "bad option \"$command\": must be one of $commands"
+    }
+    eval $command $n $args    
+}
+
+#### WIDGET COMMANDS  ###############
+
+# Works like the standard Tk widget command config,
+# except that it returns list of {-switch default value} lists.
+#
+proc configure {n args} {
+    variable $n 
+    variable options 
+    variable defaults
+
+    set len [llength $args]
+    if {$len == 0} {
+	foreach switch $options {
+	    lappend results [list $switch $defaults($switch) [cget $n $switch]]
+	}
+	return $results
+    } 
+    if {$len == 1} {
+	return [eval cget $n $args]
+    }
+    if {$len > 1} {
+	for {set i 0} {$i < $len} {incr i 2} {
+	    cset $n [lindex $args $i] [lindex $args [expr $i+1]]
+	}
+    }
+}
+
+# Used to get a particular widget configuration option.
+# Checks for valididy of option, wrapper around vget
+#
+proc cget {n switch} {
+    variable options
+
+    if {[lsearch  $options $switch] < 0} {
+	error "unknown option \"$switch\""
+    } else {
+	return [vget $n $switch]
+    }
+}
+
+    
+# Creates a new tab with name "label".  It should be associate
+# with a frame later
+#
+proc addTab {n label} {
+    set t [vget $n numtabs]
+
+    createTab $n $label win ids
+
+    bind $win <ButtonPress-1> "$n tabPress $t"
+
+    vset $n tab${t}_win $win
+    vset $n tab${t}_ids $ids
+
+    activateTab $n $t
+    deactivateTab $n $t
+    vset $n numtabs [expr $t+1]
+}
+
+# Associates a frame with a particular tab
+#
+proc addFrame {n frame tab args} {
+    set total [vget $n numtabs]
+
+    if {$tab < 0 || $tab >= $total} {
+	error "bad tab \"$tab\": want range \[0 [expr $total-1]\]"
+    } 
+    vset $n frame${tab} $frame
+    vset $n frame${tab}_args $args
+    
+    if {[vget $n activeTab] == $tab} {
+	tabPress $n $tab
+    }
+}
+
+# Associates a command with a particular tab
+#
+proc addCommand {n tab command} {
+    set total [vget $n numtabs]
+
+    if {$tab < 0 || $tab >= $total} {
+	error "bad tab \"$tab\": want range \[0 [expr $total-1]\]"
+    } 
+    vset $n command${tab} $command
+}
+
+# Shows the contents for the current tab.  Bound to a button
+# press on a tab or can be called explicitly
+#
+proc tabPress {n newTab} {
+    if [vget $n callback] {
+	return
+    }
+
+    set total [vget $n numtabs]
+    set t [vget $n activeTab]
+    set contents [vget $n frame]
+
+    if {$newTab < 0 || $newTab >= $total} {
+	error "bad tab \"$newTab\": want range \[0 [expr $total-1]\]"
+    } 
+
+    catch {deactivateTab $n $t}
+    activateTab $n $newTab
+    vset $n activeTab $newTab
+
+    if {[catch {vget $n frame${t}} frame] == 0} {
+	pack forget $frame
+    }
+    if {[catch {vget $n frame${newTab}} frame] == 0} {
+	set packArgs [vget $n frame${newTab}_args]
+	eval pack $frame -in $contents $packArgs
+    }
+    if {[catch {vget $n command${newTab}} command] == 0} {
+	uplevel #0 $command
+    }
+    
+    set traceVar [vget $n -variable]
+    if {$traceVar != {}} {
+	vset $n callback 1
+	global $traceVar
+	set $traceVar $newTab
+	vset $n callback 0
+    }
+}
+
+# Returns the currently active tab index
+#
+proc index {n} {
+    variable $n
+    return [vget $n activeTab]
+}
+
+#### LOCAL PROCEDURES ###############
+
+
+# Used to set a particular widget configuration option.
+# Checks for valididy of option, wrapper around vset
+#
+proc cset {n switch value} {
+    variable options
+
+    if {[lsearch  $options $switch] < 0} {
+	error "unknown option \"$switch\""
+    } 
+
+    # Code to be evaluated before certain options change
+    switch -- $switch {
+	-variable {
+	    global [vget $n -variable]
+	    trace vdelete [vget $n -variable] w "NotebookWidget::callback $n"
+	}
+    }
+    
+    vset $n $switch $value
+
+    # Code to be evaluated after certain options change
+    switch -- $switch {
+	-variable {
+	    global $value
+	    trace variable $value w "NotebookWidget::callback $n"
+	}
+    }
+}
+
+# Sets a member variable in a notebook widget
+proc vset {n switch value} {
+    variable $n
+    set ${n}($switch) $value
+}
+
+# Gets a member variable in a notebook widget
+proc vget {n switch} {
+    variable $n
+    return [set ${n}($switch)]
+}
+
+proc callback {n var nothing op} {
+    upvar $var index
+    tabPress $n $index
+}
+
+# Cool utility function that fetches all of the notebook's member
+# variables into the local scope, removing dashes from "-switches"
+#
+proc getMemberVars {n} {
+    variable $n
+    foreach o [array names $n] {
+	if {[string index $o 0] == "-"} {
+	    upvar [string range $o 1 end] opt
+	} else {
+	    upvar $o opt
+	}	    
+	set opt [vget $n $o]
+    }
+}
+
+set tnum 0
+set cnum 0
+
+# Creates an tab and adds it to the
+# notebook's canvas
+#
+proc createTab {n text win_ptr ids_ptr} {
+    variable tnum
+    upvar $win_ptr win $ids_ptr ids
+    getMemberVars $n
+
+    set win [label $n.t[incr tnum] -text $text -bg $bg -fg $fg -padx $tabipadx -font $font]
+
+    set x $tabOffset
+    set y $pad
+    set w [expr $tabwidth ? $tabwidth : [winfo reqwidth $win]]
+    set h $tabheight
+
+    # label window
+    lappend ids [_$n create window [expr $x+$bd] [expr $y+$bd] \
+	    -height [expr $h-2*$bd] -width [expr $w-2*$bd] \
+	    -window $win -anchor nw]
+    # left strip
+    lappend ids [_$n create rectangle $x [expr $y+$bd] [expr $x+$bd] \
+	    [expr $y+$h-$bd] -fill $bgl -outline {}]
+    # left arc 
+    lappend ids [_$n create arc $x $y [expr $x+2*$bd] [expr $y+2*$bd] \
+	    -extent 90 -start 90 -fill $bgl -outline {}]
+    # top strip
+    lappend ids [_$n create rectangle [expr $x+$bd] $y \
+	    [expr $x+$w-$bd] [expr $y+$bd] -fill $bgl -outline {}]
+    # right arc
+    lappend ids [_$n create arc [expr $x+$w-2*$bd] $y \
+	    [expr $x+$w] [expr $y+2*$bd] -extent 90 -start 0 \
+	    -fill $bgd -outline {}]
+    # right strip
+    lappend ids [_$n create rectangle [expr $x+$w-$bd] \
+	    [expr $y+$bd] [expr $x+$w] [expr $y+$h-$bd] \
+	    -fill $bgd -outline {}]
+    # bottom strip
+    lappend ids [_$n create rectangle [expr $x+$bd] [expr $y+$h-$bd] \
+	    [expr $x+$w-$bd] [expr $y+$h] -fill $bg -outline {}]
+
+    vset $n tabOffset [expr $tabOffset+$w+$tabpadx]
+}
+
+# Changes look of tab when it is activated
+#
+proc activateTab {n tab} {
+    variable $n
+
+    set ids [vget $n tab${tab}_ids]
+    set bd [vget $n -bd]
+    
+    # Resize each part of tab in turn
+    # window
+    set id [lindex $ids 0]
+    set coords [_$n coords $id]
+    _$n coords $id [expr [lindex $coords 0]-$bd] [expr [lindex $coords 1]-$bd]
+    set h [_$n itemcget $id -height]
+    set w [_$n itemcget $id -width]
+    _$n itemconfigure $id -width [expr $w+2*$bd] -height [expr $h+$bd]
+    # left strip
+    set id [lindex $ids 1]
+    set coords [_$n coords $id]
+    _$n coords $id [expr [lindex $coords 0]-$bd] [expr [lindex $coords 1]-$bd] \
+	    [expr [lindex $coords 2]-$bd] [lindex $coords 3]
+    _$n raise $id
+    # left arc
+    set id [lindex $ids 2]
+    set coords [_$n coords $id]
+    _$n coords $id [expr [lindex $coords 0]-$bd] [expr [lindex $coords 1]-$bd] \
+	    [expr [lindex $coords 2]-$bd] [expr [lindex $coords 3]-$bd]
+    # top strip
+    set id [lindex $ids 3]
+    set coords [_$n coords $id]
+    _$n coords $id [expr [lindex $coords 0]-$bd] [expr [lindex $coords 1]-$bd] \
+	    [expr [lindex $coords 2]+$bd] [expr [lindex $coords 3]-$bd]
+    # right arc
+    set id [lindex $ids 4]
+    set coords [_$n coords $id]
+    _$n coords $id [expr [lindex $coords 0]+$bd] [expr [lindex $coords 1]-$bd] \
+	    [expr [lindex $coords 2]+$bd] [expr [lindex $coords 3]-$bd]
+    # right strip
+    set id [lindex $ids 5]
+    set coords [_$n coords $id]
+    _$n coords $id [expr [lindex $coords 0]+$bd] [expr [lindex $coords 1]-$bd] \
+	    [expr [lindex $coords 2]+$bd] [lindex $coords 3]
+    _$n raise $id
+    # bottom strip
+    set id [lindex $ids 6]
+    set coords [_$n coords $id]
+    _$n coords $id [expr [lindex $coords 0]-$bd] [lindex $coords 1] \
+	    [expr [lindex $coords 2]+$bd] [lindex $coords 3]
+
+    _$n raise $id
+}
+
+
+# Changes look of tab back to normal
+#
+proc deactivateTab {n tab} {
+    variable $n
+
+    set ids [vget $n tab${tab}_ids]
+    set bd [vget $n -bd]
+
+    # Resize each part of tab in turn
+    # window
+    set id [lindex $ids 0]
+    set coords [_$n coords $id]
+    _$n coords $id [expr [lindex $coords 0]+$bd] [expr [lindex $coords 1]+$bd]
+    set h [_$n itemcget $id -height]
+    set w [_$n itemcget $id -width]
+    _$n itemconfigure $id -width [expr $w-2*$bd] -height [expr $h-$bd]
+    # left strip
+    set id [lindex $ids 1]
+    set coords [_$n coords $id]
+    _$n coords $id [expr [lindex $coords 0]+$bd] [expr [lindex $coords 1]+$bd] \
+	    [expr [lindex $coords 2]+$bd] [lindex $coords 3]
+    # left arc
+    set id [lindex $ids 2]
+    set coords [_$n coords $id]
+    _$n coords $id [expr [lindex $coords 0]+$bd] [expr [lindex $coords 1]+$bd] \
+	    [expr [lindex $coords 2]+$bd] [expr [lindex $coords 3]+$bd]
+    # top strip
+    set id [lindex $ids 3]
+    set coords [_$n coords $id]
+    _$n coords $id [expr [lindex $coords 0]+$bd] [expr [lindex $coords 1]+$bd] \
+	    [expr [lindex $coords 2]-$bd] [expr [lindex $coords 3]+$bd]
+    # right arc
+    set id [lindex $ids 4]
+    set coords [_$n coords $id]
+    _$n coords $id [expr [lindex $coords 0]-$bd] [expr [lindex $coords 1]+$bd] \
+	    [expr [lindex $coords 2]-$bd] [expr [lindex $coords 3]+$bd]
+    # right strip
+    set id [lindex $ids 5]
+    set coords [_$n coords $id]
+    _$n coords $id [expr [lindex $coords 0]-$bd] [expr [lindex $coords 1]+$bd] \
+	    [expr [lindex $coords 2]-$bd] [lindex $coords 3]
+    _$n raise $id
+    # bottom strip
+    set id [lindex $ids 6]
+    set coords [_$n coords $id]
+    _$n coords $id [expr [lindex $coords 0]+$bd] [lindex $coords 1] \
+	    [expr [lindex $coords 2]-$bd] [lindex $coords 3]
+    _$n lower $id
+}
+
+# Creates an empty frame (used for the contents) and adds it to the
+# notebook's canvas
+#
+proc createContentsFrame {n win_ptr ids_ptr} {
+    variable cnum
+    upvar $win_ptr win $ids_ptr ids
+    getMemberVars $n
+
+    set win [frame $n.c[incr cnum] -bg $bg]
+    pack propagate $win 0
+    grid propagate $win 0
+
+    set x $pad
+    set y [expr $tabheight-$bd+$pad]
+    set height [expr $height-$tabheight+$bd-$pad]
+
+    # create frame
+    lappend ids [$n create window [expr $x+$bd] [expr $y+$bd] \
+	    -height [expr $height - 2*$bd] -width [expr $width - 2*$bd] \
+	    -window $win -anchor nw]
+    # left strip
+    lappend ids [$n create rectangle $x $y [expr $x+$bd] [expr $y+$height] -fill $bgl -outline {}]
+    # top strip
+    lappend ids [$n create rectangle $x $y [expr $x+$width] [expr $y+$bd] -fill $bgl -outline {}]
+    # right strip
+    lappend ids [$n create rectangle [expr $x+$width-$bd] [expr $y] [expr $x+$width] [expr $y+$height] -fill $bgd -outline {}]
+    # bottom strip
+    lappend ids [$n create rectangle [expr $x+$width] [expr $y+$height] [expr $x+$bd] [expr $y+$height-$bd] -fill $bgd -outline {}]
+}
+
+proc resizeContentsFrame {n} {
+    variable $n
+    getMemberVars $n
+
+    # Get new height and width of canvas
+    set height [expr [winfo height $n] - 2]
+    set width [expr [winfo width $n] - 2]
+
+    set win [vget $n frame]
+    set ids [vget $n frame_ids]
+
+    set x $pad
+    set y [expr $tabheight-$bd+$pad]
+    set height [expr $height-$tabheight+$bd-$pad]
+
+    # frame id
+    set id [lindex $ids 0]
+    _$n coords $id [expr $x+$bd] [expr $y+$bd] 
+    _$n itemconfigure $id -height [expr $height - 2*$bd] -width [expr $width - 2*$bd]
+    # left strip id
+    set id [lindex $ids 1]
+    _$n coords $id $x $y [expr $x+$bd] [expr $y+$height]
+    # top strip id
+    set id [lindex $ids 2]
+    _$n coords $id $x $y [expr $x+$width] [expr $y+$bd]
+    # right strip id
+    set id [lindex $ids 3]
+    _$n coords $id [expr $x+$width-$bd] [expr $y] [expr $x+$width] [expr $y+$height]
+    # bottom strip id
+    set id [lindex $ids 4]
+    _$n coords $id [expr $x+$width] [expr $y+$height] [expr $x+$bd] [expr $y+$height-$bd]
+}
+
+
+
+namespace export notebook
+
+}
+
+namespace import NotebookWidget::notebook
+
+
+
+
+# End
+######## end notebook.tcl
+
+proc build_prefs_ui {} {
+    global info h10 h10b h12 h12b h10bi prefsIndex tcl_platform
+
+    #### Default options for preferences ui ########
+    
+    option add *prefs*Font $h12
+
+    option add *prefs*Button*relief		raised
+    option add *prefs*Button*borderWidth 	1
+    option add *prefs*Frame*Button*background		gray71
+    option add *prefs*Frame*Button*activeBackground	gray78
+    option add *prefs*Frame*Checkbutton*activeBackground	gray75
+
+    option add *prefs*Label*anchor 		e
+    option add *prefs*Label*font		$h12b
+
+    option add *prefs*Entry*width 		20
+    option add *prefs*Entry*background 		gray75
+
+    #option add *playlists*Entry*Font $h10
+    option add *playlists*Listbox*Font $h10
+    option add *playlists*Button*Font $h10b
+
+    if {$tcl_platform(platform) != "windows"} {
+	option add *prefs*Checkbutton*selectColor antiquewhite4
+    }
+
+
+    ################################################
+
+    # Do mode info
+    toplevel .prefs
+    wm transient .prefs .
+    wm withdraw .prefs
+    wm protocol .prefs WM_DELETE_WINDOW show_prefs
+    wm group .prefs .
+    wm title .prefs "Change Preferences"
+
+    set bgcolor gray65 
+    .prefs config -bg $bgcolor
+    notebook .prefs.n -width 500 -height 280 -bg gray71 -bgd gray43 \
+	    -bgl gray90 -font $h12 -tabheight 27 -tabipadx 7 -bd 2 \
+	    -variable prefsIndex -canvasbg $bgcolor -tabpadx 0
+    
+    .prefs.n addTab General
+    .prefs.n addTab Mpg123
+    .prefs.n addTab "Playlist"
+    .prefs.n addTab "Rejects"
+
+    pack .prefs.n -padx 5 -pady 5 -side top -expand 1 -fill both
+    
+    button .prefs.ok -text "OK" -command "applyNewPrefs;show_prefs"
+    button .prefs.apply -text "Apply" -command "applyNewPrefs"
+    button .prefs.save -text "Save" -command "applyNewPrefs;savePrefs"
+    button .prefs.reset -text "Reset" -command resetPrefs
+    button .prefs.reload -text "Reload" -command "loadPrefs;resetPrefs;makeRejectList"
+    button .prefs.cancel -text "Cancel" -command show_prefs
+
+    pack .prefs.ok .prefs.apply .prefs.reset .prefs.save .prefs.reload .prefs.cancel \
+	   -side left -expand 1 -padx 2 -pady 5 -fill both
+
+    # place the prefs smack dab in the middle of the screen
+
+    update idletasks
+    set x [expr [winfo screenwidth .prefs]/2 - [winfo reqwidth .prefs]/2 \
+	    - [winfo vrootx [winfo parent .prefs]]]
+    set y [expr [winfo screenheight .prefs]/2 - [winfo reqheight .prefs]/2 \
+	    - [winfo vrooty [winfo parent .prefs]]]
+    wm geom .prefs +$x+$y
+
+    ##### General Preferences
+    set f [frame .prefs.n.general]
+    .prefs.n addFrame $f 0  -expand 1 -pady 20
+
+    checkbutton $f.shuffle -text " Shuffle Mode" -variable _prefs(shuffle)
+    checkbutton $f.reject -text " Show Reject Controls" -variable _prefs(reject)
+    checkbutton $f.start  -text " Play on Start" -variable _prefs(playOnStart)
+    checkbutton $f.help  -text " Show Help Icon" -variable _prefs(showHelp)
+
+    pack $f.shuffle $f.reject $f.start $f.help -side top -anchor w -pady 3
+
+    ##### Mpg123 Preferences #####
+    set f [frame .prefs.n.mp3]
+    .prefs.n addFrame $f 1 -expand 1 -fill both -pady 20
+
+    label $f.l1  -text "Mpg123 Path:"  
+    label $f.l2	 -text "Memory Buffer:"
+    label $f.l3	 -text "Buffer Delay: "
+    label $f.l4	 -text "Extra Flags:"  
+
+    entry $f.e1 -textvariable _prefs(playbinary)
+    entry $f.e2 -textvariable _prefs(bufsize)
+    entry $f.e3 -textvariable _prefs(bufdelay)
+    entry $f.e4 -textvariable _prefs(extraflags)
+
+    grid $f.l1 $f.e1 -sticky e -padx 5 -pady 2 -ipady 1
+    grid $f.l2 $f.e2 -sticky e -padx 5 -pady 2 -ipady 1
+    grid $f.l3 $f.e3 -sticky e -padx 5 -pady 2 -ipady 1
+    grid $f.l4 $f.e4 -sticky e -padx 5 -pady 2 -ipady 1
+
+    if {$tcl_platform(platform) == "windows"} {
+	scale $f.timeout -label "Win Responsiveness" -from 0 -to 300 \
+		-variable _prefs(winHackTimeout)  -orient horizontal -font $h12b
+	grid $f.timeout - -sticky ew -pady 5
+    }
+    
+    ##### Playlists Preferences #####
+    set f [frame .prefs.n.playlists]
+    .prefs.n addFrame $f 2  -pady 10 -padx 25 -expand 1 -fill both -anchor n
+
+    frame $f.sep1 -bd 1 -relief sunken -height 2
+    frame $f.sep2 -bd 1 -relief sunken -height 2
+
+    label $f.l0 -text "MP3 File Locations:"
+    label $f.l1 -text "Directories:" -font $h12b
+    label $f.l2 -text "Http URLS:" -font $h12b
+    label $f.l3 -text "Misc" 
+
+    set lb1 [slistbox $f.lb1]
+    set lb2 [slistbox $f.lb2]
+
+    $lb1.lbox config -bg gray71
+    $lb2.lbox config -bg gray71
+    $lb1.horiz config -bg gray78 -activebackground gray78
+    $lb2.horiz config -bg gray78 -activebackground gray78
+    $lb1.vert config -bg gray78 -activebackground gray78
+    $lb2.vert config -bg gray78 -activebackground gray78
+
+    entry $f.e1 -bg gray78 -textvariable _prefs(dir)
+    entry $f.e2 -bg gray78 -textvariable _prefs(url)
+
+    button $f.dadd -text "Add" -command "AddLoc dir"
+    button $f.dmod -text "Modify" -command "ModLoc dir"
+    button $f.ddel -text "Delete" -command "DelLoc dir"
+
+    button $f.uadd -text "Add" -command "AddLoc url"
+    button $f.umod -text "Modify" -command "ModLoc url"
+    button $f.udel -text "Delete" -command "DelLoc url"
+
+    button $f.reread -text "Re-Read Current Playlist" -padx 5  \
+	    -command {readAllDirs; if $prefs(shuffle) shuffle}
+
+
+#    grid $f.l0 - $f.sep1 - - - - - -sticky ew
+#    grid configure $f.l0 -pady 5 -sticky w
+
+    grid $f.l1 x $f.l2 -columnspan 3 -sticky w -padx 1
+    grid $lb1 x $lb2 -columnspan 3 -sticky nsew
+    grid $f.e1 x $f.e2 -columnspan 3 -sticky nsew -padx 1 -ipady 1
+    grid $f.dadd $f.dmod $f.ddel  x $f.uadd $f.umod $f.udel -sticky nsew -pady 5 -padx 1
+
+#    grid $f.l3 $f.sep2 - - - - - -sticky ew
+#    grid configure $f.l3 -pady 5 -sticky w
+    grid $f.reread -columnspan 3 -sticky ew -pady 1
+
+#    grid rowconfigure $f 2 -weight 1
+    grid rowconfigure $f 1 -weight 1
+    grid columnconfigure $f 0 -weight 2
+    grid columnconfigure $f 1 -weight 2
+    grid columnconfigure $f 2 -weight 2
+    grid columnconfigure $f 3 -weight 0 -minsize 10
+    grid columnconfigure $f 4 -weight 2
+    grid columnconfigure $f 5 -weight 2
+    grid columnconfigure $f 6 -weight 2
+
+    .prefs.n addCommand 2 fillLocationBoxes
+
+    bind $lb1.lbox <1> {
+	set selFile [%W get  [%W index @%x,%y]]
+        set _prefs(dir) $selFile;
+    }
+    bind $lb2.lbox <1> {
+	set selFile [%W get  [%W index @%x,%y]]
+        set _prefs(url) $selFile;
+    }
+    bind $lb1.lbox <B1-Motion> {
+	set selFile [%W get  [%W index @%x,%y]]
+        set _prefs(dir) $selFile;
+    }
+    bind $lb2.lbox <B1-Motion> {
+	set selFile [%W get  [%W index @%x,%y]]
+        set _prefs(url) $selFile;
+    }
+        
+    
+    ##### Rejects Preferences #####
+    set f [frame .prefs.n.rejects]
+    .prefs.n addFrame $f 3  -pady 5 -padx 25 -anchor n -expand 1 -fill both
+    
+    set l [slistbox $f.l]
+    
+    set lbox $l.lbox
+    $lbox config -font $h10b -setgrid 1	-exportselection 0 -selectmode extended 
+    $l.vert config -bg gray78 -activebackground gray78
+    $l.horiz config -bg gray78 -activebackground gray78
+
+    .prefs.n addCommand 3 makeRejectList
+
+    button $f.restore -text "Restore" -command restoreRejects -padx 20
+
+    grid $l -row 0 -sticky nsew -pady 3 -padx 3
+    grid $f.restore -row 0 -column 1 -padx 30
+
+    grid rowconfigure $f 0 -weight 1
+    grid columnconfigure $f 0 -weight 1
+
+    #################################
+
+    set prefsIndex 0
+}
+
+
+proc resetPrefs {} {
+    global prefs _prefs 
+    foreach p [array names prefs] {
+	set _prefs($p) $prefs($p)
+    }
+}
+
+proc applyNewPrefs {} {
+    global prefs _prefs
+    foreach p [array names prefs] {
+	set prefs($p) $_prefs($p)
+    }
+}
+
+proc savePrefs {} {
+    global configfile prefs rejects mp3dirs mp3urls
+
+    file copy -force $configfile $configfile.bak
+    
+    file delete -force $configfile
+    set fd [open $configfile w]
+
+    # Some preliminary stuff
+
+    puts $fd "#                                                                      "
+    puts $fd "# WARNING! MODIFY THIS FILE AT YOUR OWN RISK -- CHANGES MAY BE LOST    "
+    puts $fd "#                                                                      "
+    puts $fd "# Custom tcl hooks should be placed in ~/.mp3user, which is sourced    "
+    puts $fd "# at the end of this file.  Arbitrary tcl code inserted into this file "
+    puts $fd "# will be lost.  Simply changing the values listed below should be okay"
+    puts $fd "#                                                                      "
+
+    # Write out the prefs array
+    foreach p [array names prefs] {
+	puts $fd "set \"prefs($p)\" \"$prefs($p)\""
+    }
+
+    # Now the directories and urls
+
+    puts $fd "\n##### Directories and URLS that contain .mp? files #####"
+    foreach d [lsort $mp3dirs] {
+	puts $fd "lappend mp3dirs \"$d\""
+    }
+    foreach d [lsort $mp3urls] {
+	puts $fd "lappend mp3urls \"$d\""
+    }
+
+    # Write the rejects
+    puts $fd "\n\n\n##### Music that just isn't cool #####"
+    foreach r [lsort [array names rejects]] {
+	if {[string first "a:" $r] >= 0} {
+	    # artist squelch
+	    puts $fd "set \"rejects($r)\" 1"
+	} else {
+	    # song squelch
+	    foreach song $rejects($r) {
+		puts $fd "lappend \"rejects($r)\" \"$song\""
+	    }
+	}
+    }
+
+    # And the footer
+    
+    puts $fd "\n######################################\n"
+    puts $fd "if \[file exists \[glob -nocomplain ~/.mp3user\]\] \{"
+    puts $fd "    source \[glob ~/.mp3user\]"
+    puts $fd "\}"
+
+    flush $fd
+    close $fd
+}
+
+proc loadPrefs {} {
+    global configfile prefs rejects mp3dirs mp3urls
+
+    catch {unset rejects}
+    #    catch {unset prefs}
+    set mp3dirs ""
+    set mp3urls ""
+
+    if [catch {glob ~} homedir] {
+	if [catch {set env(HOME)} homedir] {
+	    set homedir [glob .]
+	}
+    }
+    set configfile [file join $homedir .mp3conf]
+
+    if [file exists $configfile] { 
+	source $configfile
+    } else {
+	# Popup a dialog, etc.
+	close [open $configfile w]
+    }
+}
+
+proc AddLoc {type} {
+    global mp3dirs mp3urls _prefs
+    if {$type == "dir"} {
+	lappend mp3dirs $_prefs(dir)
+    } else {
+	lappend mp3urls $_prefs(url)
+    }
+    fillLocationBoxes
+}
+
+proc DelLoc {type} {
+    global mp3dirs mp3urls _prefs
+    if {$type == "dir"} {
+	set lb .prefs.n.playlists.lb1.lbox 
+	set dir [$lb curselection]
+	set mp3dirs [lreplace $mp3dirs $dir $dir]
+    } else {
+	set lb .prefs.n.playlists.lb2.lbox 
+	set url [$lb curselection]
+	set mp3urls [lreplace $mp3urls $url $url]
+    }
+    fillLocationBoxes
+}
+
+proc ModLoc {type} {
+    global mp3dirs mp3urls _prefs
+    if {$type == "dir"} {
+	set lb .prefs.n.playlists.lb1.lbox 
+	set dir [$lb curselection]
+	set mp3dirs [lreplace $mp3dirs $dir $dir $_prefs(dir)]
+    } else {
+	set lb .prefs.n.playlists.lb2.lbox 
+	set url [$lb curselection]
+	set mp3urls [lreplace $mp3urls $url $url $_prefs(url)]
+    }
+    fillLocationBoxes
+}
+
+proc fillLocationBoxes {} {
+    global mp3dirs mp3urls
+
+    set dbox .prefs.n.playlists.lb1.lbox
+    set ubox .prefs.n.playlists.lb2.lbox
+    
+    $dbox delete 0 end
+    $ubox delete 0 end
+
+    foreach d $mp3dirs {
+	$dbox insert end $d
+    }
+    foreach u $mp3urls {
+	$ubox insert end $u
+    }
+}
+
+proc makeRejectList {} {
+    global rejects
+
+    set rsongs {}
+    set rartists {}
+    .prefs.n.rejects.l.lbox delete 0 end
+    
+    foreach n [array names rejects] {
+	if {[string first "a:" $n] >= 0} {
+	    lappend rartists [string toupper [string range $n 2 end]]
+	} else {
+	    foreach song $rejects($n) {
+		lappend rsongs "$n - $song"
+	    }
+	}
+    }
+    foreach n [lsort -ascii $rartists] {
+	.prefs.n.rejects.l.lbox insert end $n
+    }
+    foreach n [lsort -ascii $rsongs] {
+	.prefs.n.rejects.l.lbox insert end $n
+    }
+}
+
+proc restoreRejects {} {
+    global rejects
+
+    set okays [.prefs.n.rejects.l.lbox curselection]
+    foreach i $okays {
+	set name [.prefs.n.rejects.l.lbox get $i]
+	if [regexp {(.*) - (.*)} $name match artist song] {
+	    set songs $rejects($artist)
+	    set index [lsearch $songs $song]
+	    if {$index < 0} {
+		error "something went wrong in restoreRejects"
+	    }
+	    set songs [lreplace $songs $index $index]
+	    set rejects($artist) $songs
+	} else {
+	    set name [capitalize [string tolower $name]]
+	    unset rejects(a:$name)
+	}
+    }
+    set y [lindex [.prefs.n.rejects.l.lbox yview] 0]
+    makeRejectList
+    .prefs.n.rejects.l.lbox yview moveto $y
+}
+
+
+proc makeRejectBindings {} {
+    bind .x <2> {
+	tkButtonDown %W
+    }
+    bind .x <ButtonRelease-2> {
+	tkButtonUp2 %W
+    }
+
+    proc tkButtonUp2 w {
+	global tkPriv
+	if {$w == $tkPriv(buttonWindow)} {
+	    set tkPriv(buttonWindow) ""
+	    $w config -relief $tkPriv(relief)
+	    if {($w == $tkPriv(window))
+	    && ([$w cget -state] != "disabled")} {
+		uplevel #0 "reject artist"
+		makeRejectList
+	    }
+	}
+    }
+}
+
+proc frames2secs {frames} {
+    global info 
+    
+    if {$info(kbitrate) < 48} {
+	set secs [expr $frames / 19.14]
+    } else {
+	set secs [expr $frames / 38.28]
+    }
+    return $secs
+}
+
+proc mem2secs {mem} {
+    global info
+
+    # secs = bytes * secs/sample * samples/byte
+
+    set secs [expr $mem / $info(freq) / 4];
+    return $secs
+}
+
+proc toggleRemaining {} {
+    global info
+
+    set info(remaining) [expr $info(remaining) ? 0 : 1]
+    updateTime $info(secs)
+}
+
+proc updateTime {secs} {
+    global info 
+
+    if {$secs < $info(secs)} {
+	return;
+    } else {
+	set info(secs) $secs
+    }
+
+    if {$info(remaining)} {
+	set secs [expr $info(songLength) - $secs]
+	if {$secs < 0} {set secs 0}
+	set info(time) "-[formatTime [expr round($secs)]] "
+    } else {
+	set info(time) "[formatTime [expr round($secs)]] "
+    }
+}
+
+proc updateBufPercent {} {
+    global info prefs
+
+    if {$prefs(bufsize) > 0} {
+	set p [expr  $info(buffer) / ($prefs(bufsize)*1024.) * 100.]
+	set p [format "%.2f" $p]
+	if {$p > 100} {set p "100."}
+	set info(bufpcnt) "$p%"
+    } else {
+	set info(bufpcnt) "n/a"
+    }
+}
+
+proc formatTime {t} {
+    set abs [expr abs($t)];
+    set hours [expr int($abs / 3600)];
+    set minutes [expr (int($abs / 60)) % 60]
+    set seconds [expr int($abs - $hours*3600 - $minutes*60)];
+
+    set retval {};
+
+    if {$hours > 0} {
+	lappend retval $hours:
+	if {$minutes < 10} {set minutes 0$minutes};
+	lappend retval $minutes:
+	if {$seconds < 10} {set seconds 0$seconds};
+	lappend retval $seconds
+    } else {
+	lappend retval $minutes:
+	if {$seconds < 10} {set seconds 0$seconds};
+	lappend retval $seconds
+    }
+    set retval [join $retval {}];
+}
+
+
+set blinkState 0
+
+proc blink {} {
+    global state info blinkState
+
+    if {$state(mode) == "paused"} {
+	if {$blinkState == 0} {
+	    .f1.time config -fg gray71
+	    set blinkState 1
+	    after 500 blink
+	} else {
+	    .f1.time config -fg black
+	    set blinkState 0
+	    after 500 blink
+	}
+    } else {
+	.f1.time config -fg black
+	set blinkState 0
+    }
+}
+
+proc bgerror {e} {
+    global errorInfo errorCode
+
+    set msg "Error: $errorCode\n$errorInfo"
+    puts stderr $msg
+}
+
+# System dependent volume control
+
+proc changevol g { catch {exec mixer volume $g} }
+
+if {$tcl_platform(os) == "BSD/OS"} {
+	proc changevol g { catch {exec mixer vol $g} }
+}
+
+if {$tcl_platform(os) == "Linux"} {
+    proc updateVolume {} {
+	global gain
+
+	set foo [exec volume]
+	regsub "," [lindex $foo 4] "" gain
+
+	after 5000 updateVolume
+    }
+} elseif {$tcl_platform(platform) == "windows"} {
+    proc updateVolume {} {
+	global gain
+	set gain [exec volume]
+	after 5000 updateVolume
+    }
+} else {
+    proc updateVolume {} {}
+}
+
+proc debug {string} {
+    global prefs
+    if $prefs(debug) {
+	puts $prefs(debugFD) $string
+	flush $prefs(debugFD)
+    }
+}
+
+    
+proc appExit {{value 0}} {
+    global prefs
+
+    catch {
+	if $prefs(debug) {
+	    flush $prefs(debugFD)
+	    if {$prefs(debugFilename) != {}} {
+		close $prefs(debugFD)
+	    }
+	}
+    }
+    exit $value
+}
+
+proc tk_popup {menu x y {entry 0}} {
+    global tkPriv
+    global tcl_platform
+    if {($tkPriv(popup) != "") || ($tkPriv(postedMb) != "")} {
+        tkMenuUnpost {}
+    }
+    tkPostOverPoint $menu $x $y $entry
+    if {$tcl_platform(platform) == "unix"} {
+        tkSaveGrabInfo $menu
+        grab -global $menu
+        set tkPriv(popup) $menu
+        tk_menuSetFocus $menu;
+    }
+}
+
+proc ConstructPositionPopup {x y} {
+    global state songs info h10b
+
+    if {[lsearch [winfo children .] .pos_popup] != -1} {
+	.pos_popup delete 0 end;
+    } else {
+	menu .pos_popup -tearoff 0 -bg gray71 -font $h10b;
+    }
+
+    set back_five "";
+    set front_five "";
+
+    set idx $state(index);
+    incr idx -1;
+
+    while {1} {
+	incr idx -1;
+	if {$idx < 0} {
+	    set idx [expr $state(nsongs) + $idx];
+	}
+
+	set fname [lindex $songs($idx) 0];
+	set artist "";
+	set title "";
+
+	parsesong $fname artist title;
+	if {![rejected $artist $title]} {
+	    set back_five [linsert $back_five 0 $idx];
+	    set pentry($idx) "$artist / $title"
+	    if {[llength $back_five] == 5}  {
+		break;
+	    }
+	}
+    }
+
+    set idx $state(index);
+    incr idx -1;
+
+    while {1} {
+	incr idx 1;
+	if {$idx >= $state(nsongs)} {
+	    set idx [expr $idx - $state(nsongs)];
+	}
+
+	set fname [lindex $songs($idx) 0];
+	set artist "";
+	set title "";
+
+	parsesong $fname artist title;
+	if {![rejected $artist $title]} {
+	    lappend front_five $idx;
+	    set pentry($idx) "$artist / $title"
+	    if {[llength $front_five] == 5}  {
+		break;
+	    }
+	}
+    }
+    foreach idx $back_five {
+	.pos_popup add command -label $pentry($idx) -command "global state; set state(index) $idx; next";
+    }
+    .pos_popup add command -label "$info(artist) / $info(title)"
+   
+    foreach idx $front_five {
+	.pos_popup add command -label $pentry($idx) -command "global state; set state(index) $idx; next";
+    }
+
+
+    tk_popup .pos_popup $x $y 5;
+}
+
+set xbm(s) {
+#define shuffle_width 11
+#define shuffle_height 13
+static char shuffle_bits[] = {
+    0x00,0xf8,0x00,0xf8,0x00,0xf8,0x00,0xf8,0xe0,0xf8,0xb0,0xf9,0x60,0xf8,0xc0,
+    0xf8,0xd8,0xf8,0x70,0xf8,0x00,0xf8,0x00,0xf8,0x00,0xf8};
+}
+
+set xbm(r) {
+#define read_width 12
+#define read_height 12
+static char read_bits[] = {
+ 0x00,0xf0,0x00,0xf0,0x00,0xf0,0xa0,0xf1,0xe0,0xf0,0x60,0xf0,0x30,0xf0,0x30,
+ 0xf0,0x30,0xf0,0x00,0xf0,0x00,0xf0,0x00,0xf0};
+}
+
+set xbm(x) {
+#define reject_width 11
+#define reject_height 12
+static char reject_bits[] = {
+ 0x00,0xf8,0x00,0xf8,0x00,0xf8,0x98,0xf9,0xf0,0xf8,0x60,0xf8,0x70,0xf8,0xd8,
+ 0xf8,0xcc,0xf8,0x00,0xf8,0x00,0xf8,0x00,0xf8};
+}
+
+set xbm(i) {
+#define info_width 11
+#define info_height 13
+static char info_bits[] = {
+ 0x00,0x00,0x00,0x00,0xc0,0x00,0x00,0x00,0x60,0x00,0x60,0x00,0x60,0x00,0x30,
+ 0x00,0x30,0x00,0x30,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
+}
+
+set xbm(close) {
+#define close_width 20
+#define close_height 16
+static unsigned char close_bits[] = {
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xc0, 0x7f, 0x00, 0xc0, 0x7f, 0x00,
+  0xc0, 0x7f, 0x00, 0xc0, 0x7f, 0x00, 0xc0, 0x7f, 0x00, 0xc0, 0x7f, 0x00,
+  0xc0, 0x7f, 0x00, 0xc0, 0x7f, 0x00, 0xc0, 0x7f, 0x00, 0xc0, 0x7f, 0x00,
+  0xc0, 0x7f, 0x00, 0xc0, 0x7f, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  };
+}
+
+set xbm(next) {
+#define next_width 20
+#define next_height 16
+static char next_bits[] = {
+ 0x00,0x00,0x00,0x00,0x00,0x00,0x10,0x70,0x00,0x30,0x70,0x00,0x70,0x70,0x00,
+ 0xf0,0x70,0x00,0xf0,0x71,0x00,0xf0,0x73,0x00,0xf0,0x73,0x00,0xf0,0x71,0x00,
+ 0xf0,0x70,0x00,0x70,0x70,0x00,0x30,0x70,0x00,0x10,0x70,0x00,0x00,0x00,0x00,
+ 0x00,0x00,0x00};
+}
+
+set xbm(pause) {
+#define pause_width 20
+#define pause_height 16
+static unsigned char pause_bits[] = {
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xc0, 0x71, 0x00, 0xc0, 0x71, 0x00,
+  0xc0, 0x71, 0x00, 0xc0, 0x71, 0x00, 0xc0, 0x71, 0x00, 0xc0, 0x71, 0x00,
+  0xc0, 0x71, 0x00, 0xc0, 0x71, 0x00, 0xc0, 0x71, 0x00, 0xc0, 0x71, 0x00,
+  0xc0, 0x71, 0x00, 0xc0, 0x71, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  };
+}
+
+set xbm(play) {
+#define play_width 20
+#define play_height 16
+static unsigned char play_bits[] = {
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x03, 0x00,
+  0x00, 0x07, 0x00, 0x00, 0x0f, 0x00, 0x00, 0x1f, 0x00, 0x00, 0x3f, 0x00,
+  0x00, 0x3f, 0x00, 0x00, 0x1f, 0x00, 0x00, 0x0f, 0x00, 0x00, 0x07, 0x00,
+  0x00, 0x03, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  };
+}
+
+set xbm(prev) {
+#define prev_width 20
+#define prev_height 16
+static char prev_bits[] = {
+ 0x00,0x00,0x00,0x00,0x00,0x00,0xe0,0x80,0x00,0xe0,0xc0,0x00,0xe0,0xe0,0x00,
+ 0xe0,0xf0,0x00,0xe0,0xf8,0x00,0xe0,0xfc,0x00,0xe0,0xfc,0x00,0xe0,0xf8,0x00,
+ 0xe0,0xf0,0x00,0xe0,0xe0,0x00,0xe0,0xc0,0x00,0xe0,0x80,0x00,0x00,0x00,0x00,
+ 0x00,0x00,0x00};
+}
+
+
+loadPrefs
+# setup debugging
+if {$prefs(debug) && $prefs(debugFilename) != {}} {
+    set prefs(debugFD) [open $prefs(debugFilename) w]
+}
+debug "Starting mp3dj [clock format [clock seconds]]"
+updateVolume
+build_ui
+build_info_ui
+build_songlist_ui
+build_prefs_ui
+pack propagate . 0
+update
+
+expr "srand([clock clicks])"
+readAllDirs
+if $prefs(shuffle) shuffle
+next
+if $prefs(playOnStart) play

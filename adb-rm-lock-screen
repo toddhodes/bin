@@ -1,0 +1,1 @@
+adb shell am start -n com.android.settings/com.android.settings.ChooseLockGeneric –ez confirm_credentials false –ei lockscreen.password_type 0 –activity-clear-task

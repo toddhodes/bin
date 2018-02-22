@@ -1,0 +1,5 @@
+for i in `amixer | grep Grou | cut -d"'" -f2`
+do 
+  amixer set "$i" 31 unmute 
+done
+

@@ -1,0 +1,25 @@
+#!/bin/bash
+
+# just use cp -dpR !!!!
+exit
+
+case $1 in
+"") echo "Usage: $0 <copy-to-point>"; exit ;;
+esac
+
+echo "Copying everything at or below this directory to $1"
+echo "Okay?   (^C to exit)"
+read
+
+for i in `du -a | cut -f2`
+do
+  if test -L $i
+  then
+    # is soft link: make it rather than copy it
+    linkto=`l -lagrt $i | cut -d">" -f2`
+    ln -s $i $linkto
+    unset linkto
+  else
+    cp -dpR $i $1/$i
+  fi
+done

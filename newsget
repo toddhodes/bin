@@ -1,0 +1,64 @@
+# grab group
+
+
+set -o xtrace
+
+#IP=agate.berkeley.edu
+IP=198.112.179.16
+#206.28.168.22 
+
+case $1 in
+'')     echo "Normal Usage: newsget <group> <start num>";
+        echo "Assuming..." ; exit ;;
+esac
+
+
+x=$2
+
+case $2 in
+'')
+x=$(
+	( echo group $1
+	 echo quit
+	 sleep 10
+	) | telnet $IP 119 | grep $1 | cut -d" " -f3 
+) ;;
+esac
+echo "x=$x"
+
+y=$(
+	( echo group $1
+	 echo quit
+	 sleep 10
+	) | telnet $IP 119 | grep $1 | tee TESTING | cut -d" " -f4
+)
+z=`echo $y-$x | bc`
+echo "x $x y $y z $z"
+
+trap 'touch "last=$x"' EXIT
+
+echo group $1 > __infile__
+for i in `numbers $z $x`
+do
+	 echo head $i >> __infile__
+done
+
+wc __infile__
+
+( echo group $1
+ cat __infile__
+ echo quit
+ sleep 600
+#) | telnet $IP 119 >> headers
+) | telnet $IP 119 2> /dev/null | grep "(Subject|Lines)" >> headers
+
+#for i in `numbers $z` 
+#do
+#	( echo group $1
+#	 echo article $x
+#	 echo quit
+#	 sleep 4
+#	) | telnet $IP 119 >> grabbed-stuff
+#    echo "got: $x"
+#	x=`echo "$x+1" | bc`
+#done

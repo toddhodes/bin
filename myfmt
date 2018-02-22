@@ -1,0 +1,5 @@
+
+case `uname` in
+"SunOS") fmt -61
+"BSD/OS") fmt 61
+esac

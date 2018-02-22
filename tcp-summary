@@ -1,0 +1,95 @@
+#! /bin/sh
+#
+# Summarize each protocol's connections in a tcp-reduce file.
+
+awk '
+BEGIN	{
+	# Number of bytes that if an unidentified protocols connections
+	# total fewer, the protocol is deemed insignificant.
+	insig_bytes = 500000
+	insig_conn = 100	# same for number of connections
+	}
+
+$2 == "bogon:" || $3 == "bogons"	{
+	next
+	}
+
+	{
+	p = $3
+	if ( p ~ /ftpdata-/ )
+		p = "ftpdata-XXXX"
+
+	++conn[p]
+	bytes[p] += $4 + $5
+
+	if ( $8 == "SF" )
+		++sf[p]
+
+	if ( $9 ~ /L/ )
+		++linit[p]
+
+	if ( $9 ~ /N/ )
+		++neighbor[p]
+	}
+
+END	{
+	# First, lump together insignificant "other" and "priv" connections.
+	for ( p in conn )
+		{
+		if ( p ~ /priv/ &&
+		     (bytes[p] < insig_bytes || conn[p] < insig_conn) )
+			{
+			priv_bytes += bytes[p]
+			priv_conn += conn[p]
+			++insig[p]
+			}
+
+		else if ( p ~ /other/ &&
+		          (bytes[p] < insig_bytes || conn[p] < insig_conn) )
+			{
+			other_bytes += bytes[p]
+			other_conn += conn[p]
+			++insig[p]
+			}
+		}
+
+	for ( p in conn )
+		if ( ! (p in insig) )
+			print p, conn[p],
+				round( bytes[p] / 1000 ), 
+				round( sf[p] / conn[p] * 100 ),
+				round( linit[p] / conn[p] * 100 ),
+				round( neighbor[p] / conn[p] * 100 )
+
+	if ( priv_conn > 0 )
+		print "priv-xxx", priv_conn, round( priv_bytes / 1000 ),
+			"NA", "NA", "NA"
+
+	if ( other_conn > 0 )
+		print "other-xxx", other_conn, round( other_bytes / 1000 ),
+			"NA", "NA", "NA"
+	}
+
+
+function round( n )
+	{
+	return int( n + 0.5 )
+	}
+' $* |
+
+sort -nr +2 |
+
+awk '
+	{
+	if ( NR == 1 )
+		{
+		fmt = "%-12s %6s %8s    %4s %5s %5s\n"
+		printf( fmt, "proto", "# conn", "KBytes",
+				"% SF", "% loc", "% ngh" )
+		printf( fmt, "-----", "------", "------",
+				"----", "-----", "-----" )
+		}
+
+	printf( fmt, $1, $2, $3, $4, $5, $6 )
+	}
+'

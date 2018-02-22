@@ -1,0 +1,1 @@
+while [ true ]; do for s in {1..200}; do echo -n .; sleep 1; done; echo; done

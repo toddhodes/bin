@@ -1,0 +1,43 @@
+#!/bin/sh
+#
+# JavaSig - generate method signature files
+#
+# This script uses javap to generate a method signature file for each
+# source file.  These are stored in .sig files.
+#
+# If the signature hasn't changed from the last time this script was run,
+# the file is not updated.  This means you can use .sig files in makefile
+# dependency rules, so that clients of a class get recompiled only when
+# its interface changes, and not for every piddling implementation or
+# documentation change.
+#
+# Copyright (C) 1996 by Jef Poskanzer <jef@acme.com>.  All rights reserved.
+
+tmp=/tmp/jcs.$$
+rm -f $tmp
+
+for a in $* ; do
+    case "$a" in
+	-*)
+	;;
+	*.java)
+	s=`echo "$a" | sed -e 's/\.java$/.sig/'`
+	javap `JavaClass $a` > $tmp
+	# Ought to put in public static final variables too, since they
+	# get inlined.
+	if [ -f "$s" ] ; then
+	    if cmp $tmp "$s" > /dev/null 2>&1 ; then
+		# Unchanged, do nothing.
+		echo > /dev/null	# null command for broken shells
+	    else
+		rm -f "$s"
+		mv $tmp "$s"
+	    fi
+	else
+	    mv $tmp "$s"
+	fi
+	;;
+    esac
+done
+
+rm -f $tmp

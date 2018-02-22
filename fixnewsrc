@@ -1,0 +1,275 @@
+#!/usr/bin/perl
+
+umask(077);
+
+# FixNewsrc
+
+# v1.5 by Chris Davis <ckd@eff.org>
+#      and Dan Wallach <dwallach@soda.berkeley.edu>
+
+# run "fixnewsrc -help" for documentation and usage notes,
+# see the sample files, look at README, or Use the Source, Luke.
+
+# New features in 1.5
+#
+# generates ~/.nn/init 'sequence' list -- should probably read what's there
+# and do something useful with it, but if you've gone to the trouble of
+# making a complicated sequence list, you don't need this program :-)
+#
+# revamped output section to only leave a newsrc ".bak" file if the write
+# succeeded on the new file
+#
+# Finally, Tom will be happy.  (Or, Tom may never be happy :-)
+# --dwallach 1991 Aug 09
+
+# New feature in 1.4
+#
+# cleaned up the eval in sub insert, it's now evaling the loop instead
+# of being within it.  This optimizes (/pat/) perl patterns; it now runs in
+# much less time on my sample .news.favorite (with a 2500+ group .newsrc!)
+#
+#old: 44.0u 15.9s 1:10.66 84.9% 0+1080k 5+15io 0pf+0w
+#new: 12.4u  9.7s 0:27.94 79.7% 0+1012k 3+15io 0pf+0w
+# --ckd 1991 Aug 09
+
+# New features in 1.3
+#
+# Cleaned up some messages to print the true filename.
+# added -s sortfile option (from Ed Vielmetti <emv@msen.com>)
+# Fixed an array-slice masquerading as a scalar...
+#
+# --ckd 1991 Aug 08
+
+# New features in 1.2:
+#
+# Uses getopts.pl to allow the following new feature (so the help parsing
+#  also changed)
+#
+# has -f file to allow using something other than $HOME/.newsrc.
+#  (good for those GNUS users using .newsrc-nntpserver style files)
+# --ckd 1991 Jul 16
+
+# New features in 1.1:
+#
+# handles arbitrary Perl patterns via eval (idea from Liam Quin's awk script)
+# handles stranger and more obscure error cases (happy, Tom? :-)
+# -- dwallach 1991 Jun 10
+
+# Version 1.0, written sometime in June, 1991 -- dwallach
+
+# counter return true if it actually printed anything
+sub counter {
+    return 0 unless ((++$counter % 100) == 0);
+    $prev_blurt = 0;
+    print STDERR "$counter...";
+    1;
+}
+
+sub tally_counter {
+    print STDERR "$counter",(defined $verbosity)?" total\n\n":"\n";
+}
+
+sub blurt {
+    return unless $verbosity;
+    print STDERR "\n" unless $prev_blurt;
+    print STDERR @_;
+    $prev_blurt = 1;
+}
+
+sub insert {
+	local($group) = split(/[:!]/, $_[0], 2);
+	if(!defined $newsrc{$group}) {
+	    &blurt("Warning: $group not in $newsrc_file!\n")
+		if !defined($inserted{$group});
+	    next;
+	}
+
+	&blurt(">> $_\n");
+	&counter;
+	push (@output, $newsrc{$group});
+	$inserted{$group} = 1;
+	delete $newsrc{$group};
+}
+
+sub print_favorites {
+    print STDERR "Parsing favorites: ";
+    favorite: foreach(<FAVORITE>) {
+	chop;
+	s/\s*\#.*$//;
+	next if /^$/;
+
+	if(/\(/) {
+	    &blurt("Matching: $_\n");
+	    $pattern = $_;
+	    eval <<END_OF_EVAL;
+	    foreach (\@newsrc) {
+		    if ($pattern) {
+			&insert(\$_);
+		    }
+	    }
+END_OF_EVAL
+	    &blurt("Match complete\n");
+	    next favorite;
+	}
+	&insert($_);
+    }
+    &tally_counter;
+}
+
+require 'getopts.pl';	# and unfortunately require 3.0.44 or later
+&Getopts("h:s:f:vnc");	# help, sortlist (favorites), file, verbose, clean
+
+if (@ARGV || $opt_h) {
+    print STDERR <<NO_MORE_HELP;
+fixnewsrc 1.5 by Chris Davis <ckd@eff.org>
+              and Dan Wallach <dwallach@soda.berkeley.edu>
+              and patches by Ed Vielmetti <emv@msen.com>
+Usage: $0       [-n] [-v] [-f file] [-s favoritefile] [-c] [anything else]
+    -v == more verbose
+    -f == use file instead of .newsrc
+    -s == sort by this file instead of .news.favorite
+    -n == do surgery on nn's init file -- rewrites the sequence entry
+    -c == clean your .newsrc (removes article numbers in unsub'ed groups
+    anything else == this help message
+
+This program sorts your .newsrc, putting groups you read on top.  In addition,
+if you have a file in your home directory called .news.favorite, then the
+list of newsgroups in this file appear at the top of your .newsrc, so you
+can still read groups in your favorite order.
+
+Put any Perl expression you want to describe your group in parenthesis, and
+that's good, too.  If it's not in parenthesis, it's considered to be exact.
+Remember: you're matching on :'s and !'s, too.
+
+# Example:
+rec.humor.funny                        # comments, and blank lines are cool
+alt.fan.warlord
+ucb.computing.announce
+comp.lang.perl
+(/comp\\.text\\..*/ && (!/comp\\.text\\.tex/))  # comp.text everything but tex
+# Here's a more complicated one which matches "nas" and "nas.msgs"
+# but not "nasa.nudge" or "arc.nasamail.arc"
+(/^nas\\..*/ || /^nas[:!]/)
+NO_MORE_HELP
+    exit 0;
+}
+
+$verbosity = $opt_v;
+$newsrc_file = $opt_f || "$ENV{HOME}/.newsrc";
+$favorite_file = $opt_s || "$ENV{HOME}/.news.favorite";
+$do_nn = $opt_n;
+
+die "No .newsrc file!  Crapped out at" unless -e "$newsrc_file";
+open(NEWSRC, "<$newsrc_file") ||
+    die "Can't open $newsrc_file: $!, crapped out at";
+
+# we want to keep this associative array around for printing favorites
+# so if we've already printed something, we just delete it from the
+# associative array, and go on.
+
+print STDERR "Reading groups: ";
+$counter = 0;
+foreach(<NEWSRC>) {
+    chop;
+    next if /^$/;
+    &counter;
+    $fullentry = $_;
+    s/[:!].*$//;
+    &blurt("Warning: $_ appears more than once!\n") if defined($newsrc{$_});
+    $fullentry =~ s/!.*$/!/ if $opt_c;
+    $newsrc{$_} = $fullentry;
+}
+&tally_counter;
+
+print STDERR "Sorting..." if $verbosity;
+@newsrc = sort values %newsrc;
+print STDERR "Done\n" if $verbosity;
+# output time... clear the counter and let's deal with the favorites file
+$counter = 0;
+
+if (open(FAVORITE, $favorite_file)) {
+    &print_favorites;
+} else {
+    print STDERR "Couldn't find $favorite_file.  Just sorting $newsrc_file.\n";
+}
+
+# yeah, we have to do it twice... It's good enough...
+undef @newsrc;
+print STDERR "Sorting again..." if $verbosity;
+@newsrc = sort values %newsrc;
+print STDERR "Done\n" if $verbosity;
+print STDERR "Generating output: ";
+
+#
+# I could just grep through the array for :'s then !'s, but that requires
+# making two passes.  This works in one pass.
+#
+foreach(@newsrc) {
+    &counter;
+    if(/:/) {
+	push (@output, $_);
+    } elsif (/!/) {
+	push (@output2, $_);
+    }
+}
+&tally_counter;
+
+close(NEWSRC);   # we're done with using NEWSRC for input.  Output time...
+
+open(NEWSRC_TMP, "> ${newsrc_file}$$") || die "Can't open temporary .newsrc for writing: $!, crapped out at";
+
+$\ = $, = "\n";
+print NEWSRC_TMP @output, @output2;
+close(NEWSRC_TMP) || die "Can't write new $newsrc_file: $!, crapped out at";
+
+rename("$newsrc_file", "${newsrc_file}.bak") ||
+    die "Can't rename $newsrc_file: $!, crapped out at";
+
+rename("${newsrc_file}$$", "$newsrc_file") ||
+    die "Can't rename $newsrc_file: $!, crapped out at";
+
+# now, let's go fix the nn init file!
+exit 0 unless (-d "$ENV{HOME}/.nn" && defined($do_nn));
+
+printf STDERR "Fixing ~/.nn/init...";
+open(NN_INIT,"> $ENV{HOME}/.nn/init.$$") || 
+    die "Can't open temporary nn init file: $!, crapped out at";
+
+# first, we need to read in the old init file, up to where it references
+# the sequence...
+
+if(-r "$ENV{HOME}/.nn/init") {
+    open(NN_INIT_ORIG, "$ENV{HOME}/.nn/init") ||
+	die("Can't open original nn init file: $!, crapped out at");
+    while(<NN_INIT_ORIG>) {
+	last if /sequence/;
+	last if /# DON'T DELETE THIS LINE!  fixnewsrc DEPENDS ON IT./;
+	chop;
+	print NN_INIT;
+    }
+    close(NN_INIT_ORIG);   # don't need that any more...
+}
+
+printf NN_INIT "%s", <<NN_HEADER_END;
+# DON'T DELETE THIS LINE!  fixnewsrc DEPENDS ON IT.
+# the following was automatically generated by FixNewsrc...
+#
+sequence
+
+NN_HEADER_END
+
+foreach (@output) {
+    s/:.*$//;
+    next if /!/;
+    print NN_INIT;
+}
+printf STDERR "Done.\n";
+close(NN_INIT) || die "Can't write new nn init: $!, crapped out at";
+
+if(-e "$ENV{HOME}/.nn/init") {
+    rename("$ENV{HOME}/.nn/init", "$ENV{HOME}/.nn/init.bak") ||
+	die "Can't rename nn init: $!, crapped out at";
+}
+
+rename("$ENV{HOME}/.nn/init.$$", "$ENV{HOME}/.nn/init") ||
+    die "Can't rename nn init: $!, crapped out at";

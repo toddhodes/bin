@@ -1,0 +1,4 @@
+
+#cat $1 | grep "^[a-z]" | cut -c12- | sed 's/ at /~/' | cut -f1 -d"~" | less
+#cat $1 | grep "^[a-z]" | cut -c12- | cut -f1 -d"," |less
+cat $1 | grep "^[a-z]" | less

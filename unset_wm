@@ -1,0 +1,13 @@
+
+echo --- note: you have to *source* this file, not exec it:
+echo source $0
+echo ---
+
+source /ext/build/common/main/tinderbuilds/latest/unset_wm_project.sh
+source /ext/build/dyme/main/tinderbuilds/latest/unset_wm_project.sh
+source /ext/build/csa/main/tinderbuilds/latest/unset_wm_project.sh
+source /ext/build/xda/main/tinderbuilds/latest/unset_wm_project.sh
+source /ext/build/waveblog/main/tinderbuilds/latest/unset_wm_project.sh
+unset TINDERBUILD
+unset TEST_HOME
+unset TEST_BUILD

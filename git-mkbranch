@@ -1,0 +1,17 @@
+case "$1" in
+"") echo "Usage: $0 <feature/OTT-XXX> <develop|release>" ; exit 1 ;;
+esac
+
+case "$2" in
+"") branchFrom="origin/develop" ;;
+*) branchFrom=$2 ;;
+esac
+
+echo git branch $1 $branchFrom
+git branch $1 $branchFrom
+echo git checkout $1
+git checkout $1
+echo git push -u origin $1
+git push -u origin $1
+
+

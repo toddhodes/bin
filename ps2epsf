@@ -1,0 +1,11 @@
+#!/bin/sh
+#  inputfile.ps --> outputfile.epsf
+
+case $2 in
+"") echo "Usage: $0 <infile> <outfile>" ; exit ;;
+esac
+
+
+echo "Creating Encapsulated PS file" 
+cat $1 | sed -e "s/^%!.*/%!PS-Adobe-3.0 EPSF-3.0/g" > $2
+

@@ -1,0 +1,42 @@
+#!/bin/bash
+
+# get base path of checkout to get the repo name
+path=`git rev-parse --show-toplevel`
+repo=`basename $path`
+branch=$1
+message=$2
+
+# colorize it
+function log() {
+   echo -e "\033[1;32m${1}\t\033[0m"
+}
+
+function error_log() {
+   echo -e "\033[1;31m${1}\t\033[0m"
+}
+
+# ensure we have everything we need to run this helper
+if [[ -z "$repo" ]] || [[ -z "$branch" ]]; then
+   error_log "Must specific branch to close"
+   exit 1
+fi
+
+# never let anyone close develop, master or trunk
+if [ "$branch" == "develop" ] || [ "$branch" == "master" ] || [ "$branch" == "trunk" ]; then
+   error_log "pffff you're trying to close $branch? what are you thinking!?!?!"
+   exit 1
+fi
+
+# close branch on remote
+log "closing branch on remote"
+#ssh git@git.locationlabs.com closebranch $repo $branch $message
+git push origin :$branch
+
+# remove local copy
+log "removing local copy"
+git branch -D $branch
+
+# prune local repo
+log "pruning reference from local repo"
+git fetch -p
+

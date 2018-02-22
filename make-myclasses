@@ -1,0 +1,4 @@
+echo "packs all class files in the tree beneath this"
+echo "    dir into a file myclasses.jar"
+jar 0cvf myclasses.jar `du -a | grep class$ | cut -f2`
+

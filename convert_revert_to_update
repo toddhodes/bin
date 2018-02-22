@@ -1,0 +1,11 @@
+
+#  convert
+#
+# cvs update -j1.62 -j1.63 waveblog/Makefile
+#
+#  to
+#
+# cvs update -j1.63 -j1.62 waveblog/Makefile
+#
+
+sed 's/-j1.\(.*\) -j1.\(.*\) /-j1.\2 -j1.\1 /'

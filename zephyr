@@ -1,0 +1,13 @@
+kinit
+
+case `ps -ef | grep zwgc | grep -v grep | head -1 | awk '{print $8}'` in
+  "") zwgc ;;
+  "zwgc") echo "zwgc running..." ;;
+esac
+
+case $(basename $(ps -ef | grep zwatch | grep -v grep \
+                         | head -1 | awk '{print $8}')) in
+  "") zwatch -geometrey 192x44+588+0 2> /dev/null & ;;
+  "zwatch") echo "zwatch running..." ;;
+esac
+

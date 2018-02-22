@@ -1,0 +1,6 @@
+case $# in
+"0") echo "Usage: $0 <files>"; exit ;;
+esac
+cat $* | /lib/cpp -P | awk '{if (NF != 0) print}' | wc 
+
+# awk cmd == ~/bin/remove-blank-lines 

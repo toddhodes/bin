@@ -1,0 +1,16 @@
+# see http://wiki/wiki/Tilden/Testing/AsyncLogin or TIL-363  
+
+case "$1" in
+"") group=10863 ;; # (510)684-9284
+*)  group=$1 ;;
+esac
+
+if which md5 >/dev/null
+then
+  id=`echo -n $group | md5`
+else
+  id=`echo -n $group | md5sum | cut -d" " -f1`
+fi
+
+curl -k -i --user tilden:bo6K7D00rPbi57gDhwYXydEyFEjrmZ --basic -X DELETE https://tilden-beta-services.locationlabs.com/mojave/api/group/$id
+

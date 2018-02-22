@@ -1,0 +1,20 @@
+# forge mail
+
+case $1 in
+'')     echo "Usage: forgemail <subject> <file>.";exit ;;
+esac
+(echo helo terrorism.cs.berkeley.edu
+ echo mail from: happyhour-request@therock.cs.berkeley.edu
+ echo rcpt to: happyhour@therock.cs.berkeley.edu
+ echo data
+ echo From: "The Happy Hour Junta <happyhour-request@therock.cs.berkeley.edu>"
+ echo "Sender: hodes@cs.berkeley.edu (Todd Hodes)"
+ echo Subject: $1
+ echo To: hodes@cs.berkeley.edu
+ echo Reply-To: hodes@cs.berkeley.edu
+ echo ''
+ cat $2
+ echo .
+ echo quit
+ sleep 4
+) | telnet therock.cs.berkeley.edu 25 >/dev/null

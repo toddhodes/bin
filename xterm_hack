@@ -1,0 +1,75 @@
+#
+# This stuff causes the window title to be $cwd@hostname so you know where
+# you are. Also sets the icon name to be hostname in case the wm wasn't
+# set up right.
+#
+# Things are updated on a cd, pushd, popd, rlogin and telnet. Add other
+# context changes as appropriate. This file must be sourced by csh, not
+# merely execed.
+#
+# Added pad command for X25 remote logins.
+#
+# If running on a SysV machine then /usr/ucb should be in your path
+# or hostname aliased to its location.
+#
+# Now uses a separate program to do the setting via an alias for speed and
+# flexibility. You can specify below the things youd like to appear on the
+# icon and title.
+#
+# $Id: ksh_xterm_hack,v 1.2 93/04/27 13:29:35 msmith Exp $
+#
+# Ksh version written by Derek Harding 4/11/92, dharding@lssec.bt.co.uk
+#
+
+if [ "`tty`" = "/dev/console" ]
+then
+#	exit
+echo
+fi
+
+if [ $TERM = "xterm" ]
+then
+  export XTXTRA="Login@"`date +%H:%M`
+  alias -x xtset='xtset' # may need to alias this if things go wrong
+  function res_t
+{ xtset -t "%h: %d"; }
+#{ xtset -t "%d@%h (%u:%g-%m)  %e"; }
+
+function res_i 
+{ xtset -i %h; }
+
+  function cd_hack
+{ "cd" $*; res_t ;}
+  alias -x cd='cd_hack'
+
+  function newgrp_hack
+{ /bin/newgrp $*; res_t ;}
+  alias -x newgrp='newgrp_hack'
+
+  function rlogin_hack
+{ /usr/ucb/rlogin $* ; res_t ;}
+  alias -x rlogin='rlogin_hack'
+  
+  function telnet_hack
+{ /usr/ucb/telnet $* ; res_t ;}
+  alias -x telnet='telnet_hack'
+
+  function pad_hack
+{ /usr/sunlink/x25/pad $* ; res_t ;}
+  alias -x pad='pad_hack'
+
+  function umask_hack
+{ "umask" $* ; res_t;}
+  alias -x umask='umask_hack'
+
+  function su_hack
+{ save=$XTXTRA ; export XTXTRA=" su $*@"`date +%H:%M` ; res_t ; /bin/su $* ; export XTXTRA=$save ; unset save; res_t ;}
+  alias -x su=su_hack
+
+  typeset -xf cd_hack newgrp_hack rlogin_hack telnet_hack pad_hack umask_hack su_hack res_t res_i
+
+#  res_i
+  res_t
+
+fi
+

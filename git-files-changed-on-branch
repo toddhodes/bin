@@ -1,0 +1,1 @@
+git diff develop..HEAD | awk '/diff/{ sub(/b\//,""); print $4}'

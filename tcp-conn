@@ -1,0 +1,599 @@
+#! /bin/sh
+#
+# $Header: tcp-conn,v 1.4 95/07/20 10:40:45 vern Exp $
+#
+# Copyright (c) 1995 The Regents of the University of California.
+# All rights reserved.
+# 
+# This code is derived from software contributed to Berkeley by
+# Vern Paxson.
+# 
+# The United States Government has rights in this work pursuant
+# to contract no. DE-AC03-76SF00098 between the United States
+# Department of Energy and the University of California.
+# 
+# Redistribution and use in source and binary forms are permitted
+# provided that: (1) source distributions retain this entire
+# copyright notice and comment, and (2) distributions including
+# binaries display the following acknowledgement:  ``This product
+# includes software developed by the University of California,
+# Berkeley and its contributors'' in the documentation or other
+# materials provided with the distribution and in all advertising
+# materials mentioning features or use of this software.  Neither the
+# name of the University nor the names of its contributors may be
+# used to endorse or promote products derived from this software
+# without specific prior written permission.
+# 
+# THIS SOFTWARE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR
+# IMPLIED WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED
+# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+# PURPOSE.
+#
+# ----------------------------------------------------------------------
+#
+# You will want to edit this script as follows:
+#
+#	- Modify the function is_local_site() to reflect networks that
+#	  should be considered "local".  These control which networks
+#	  are renumbered for privacy.
+#
+#	- Modify is_neighbor_net() to reflect "neighbor" networks, or to
+#	  return 0 if you don't care about tracking neighbor networks.
+#
+#	- Perhaps change "awk" to some variant such as "mawk" (what the
+#	  author uses) or "gawk", if your local "awk" doesn't like this script.
+#
+#	- Perhaps modify the "renumber_local" or "renumber_all" variables
+#	  at the beginning of the script, to alter the default of renumbering
+#	  local hosts but not remote hosts.
+#
+
+awk '
+BEGIN	{
+	renumber_local = 1
+	renumber_all = 0
+
+	# Connection statistics.
+	num_local_initiated_conversations = num_completed_conversations = 0
+	neighbor_conversations = 0
+	bogons = bogus_counts = 0
+	repeated_responses = repeated_initiations = 0
+	out_of_sync_repeated_initiations = out_of_sync_responses = 0
+	repeated_finishes = false_finishes = 0
+	repeated_resets = resets = 0
+	num_restarts = 0
+	verbose = 0
+
+	for ( i = 1; i < ARGC; ++i )
+		{
+		if ( ARGV[i] == "-v" )
+			verbose = 1
+
+		delete ARGV[i]
+		}
+
+	init_tcp_proto_table()
+	}
+
+	{
+	time = $1
+
+	if ( $2 ~ /^trunc/ )
+		{
+		bogon()
+		next
+		}
+
+	conv = $4 " " $2	# see if conversation is already known
+	conversation_exists = 0
+
+	if ( conv in state )
+		{
+		conversation_exists = 1
+		is_responder = 1
+		}
+	else
+		{
+		if ( ($5 ~ /S/ && $8 ~ /ack/) )
+			{
+			# We are seeing a SYN reply - that means that even
+			# though we havent seen this connection before,
+			# we should treat this side as the responder.
+			is_responder = 1
+			}
+
+		else
+			{
+			# Must be initiator side of conversation.
+			conv = $2 " " $4
+			is_responder = 0
+			if ( conv in state )
+				conversation_exists = 1
+			}
+		}
+
+
+	if ( $5 ~ /R/ )
+		munch_rst()
+
+	else if ( $5 ~ /S/ )
+		munch_syn()
+
+	else if ( $5 ~ /F/ )
+		munch_fin()
+
+	else
+		bogon()
+
+	next
+	}
+
+
+END	{
+	time = 0	# so dump_conv() knows not to report duration
+	for ( c in state )
+		dump_conv( c, "S" state[c] )
+
+	if ( verbose && bogons > 0 )
+		print "status: " bogons, "bogons"
+	}
+
+
+function munch_rst()
+	{
+	if ( conversation_exists )
+		{
+		if ( is_responder )
+			{ # Check for rejected SYN.
+			if ( ($8 ~ /ack/ && $9 == start_seq[conv] + 1) ||
+			     state[conv] == 0 )
+				{
+				dump_conv( conv, "REJ" )
+				delete_conv( conv )
+				++rejects
+				return
+				}
+			}
+
+		if ( (is_responder && state[conv] == 3) ||
+		     (! is_responder && state[conv] == 2) )
+			{
+			rst_time[conv] = time
+			# We already saw a FIN from this side, ignore the RST.
+			return
+			}
+
+		++resets
+
+		rst_type = "RST" (is_responder ? "R" : "O") "S" state[conv]
+		dump_conv( conv, rst_type )
+
+		delete_conv( conv )
+		}
+
+	else
+		++repeated_resets
+	}
+
+
+function munch_syn()
+	{
+	count = $6 + 0
+
+	if ( conversation_exists && (state[conv] == 2 || state[conv] == 3) )
+		{
+		# Weird - we are seeing a new SYN for a conversation
+		# that is already had one FIN; this can happen if there
+		# was an old conversation that never properly finished
+		# (perhaps due to a host crashing), or if the originator
+		# FIN arrived before the responder SYN (perhaps due to
+		# dropped packets).
+		#
+		# It can also happen due to a host that sends a FIN followed
+		# by a RST.  We keep those conversations around because
+		# sometimes the other side will send a FIN in response,
+		# and then we can get a byte count.  dump_conv() knows
+		# about these types of conversations and special-cases
+		# them to report accurate times.
+		dump_conv( conv, "SS" )
+		++num_restarts
+		delete_conv( conv )
+		conversation_exists = 0
+		}
+
+	if ( conversation_exists )
+		{
+		if ( is_responder )
+			{
+			# conversation states are as follows:
+			#	0 - seen only half of conversation
+			#	1 - seen both starts of conversation
+			#	2 - seen both starts and an initiator
+			#           finish; have partial byte count
+			#	3 - seen both starts and a responder
+			#	    finish; have partial byte count
+			#	4 - seen responder SYN but not originator SYN
+
+			if ( state[conv] == 0 )
+				{
+				state[conv] = 1
+				resp_seq[conv] = count
+				transition_time = time - start_time[conv]
+
+				if ( transition_time > 60 && verbose )
+					print time,
+				"### transition from state 0 to state 1 in ",
+					      transition_time, "seconds"
+				}
+
+			else
+				{
+				++repeated_responses
+
+				# Some TCPs pick a different sequence number
+				# for repeated SYNs.
+				resp_seq[conv] = count
+				}
+
+			if ( $9 != start_seq[conv] + 1 )
+				{
+				# tcpdump gets confused about the
+				# subsequent numbers - best to
+				# nuke this conversation entirely
+				++out_of_sync_responses
+
+				if ( verbose )
+					print time,
+			    "### out of sync response to conversation begun at",
+					      start_time[conv]
+
+				dump_conv( conv, "OOS1" )
+				delete_conv( conv )
+				}
+			}
+
+		else
+			{
+			# We are seeing a repeated attempt to start
+			# a conversation, or possibly an initial SYN
+			# after the responder SYN.
+
+			if ( state[conv] == 4 )
+				{ # Initial SYN after responder SYN.
+				start_seq[conv] = count
+				state[conv] = 1
+				}
+
+			else
+				{
+				++repeated_initiations
+				++numstarts[conv]
+
+				if ( count != start_seq[conv] &&
+				     state[conv] == 1 )
+					{
+					++out_of_sync_repeated_initiations
+
+					if ( verbose )
+						print time,
+			"### out of sync reinitiation to conversation begun at",
+						      start_time[conv]
+
+					dump_conv( conv, "OOS2" )
+					delete_conv( conv )
+					}
+
+				else
+					start_seq[conv] = count
+
+				start_time[conv] = time
+				}
+			}
+		}
+	else
+		{ # new conversation
+		start_time[conv] = time
+		numstarts[conv] = 1
+		proto[conv] = getproto( is_responder )
+
+		if ( is_responder )
+			{
+			state[conv] = 4
+			resp_seq[conv] = count
+			orig_host[conv] = strip_proto( $4 )
+			resp_host[conv] = strip_proto( $2 )
+			}
+
+		else
+			{
+			state[conv] = 0
+			start_seq[conv] = count
+			orig_host[conv] = strip_proto( $2 )
+			resp_host[conv] = strip_proto( $4 )
+			}
+
+		if ( proto[conv] == "ftp" )
+			++ftp_conv[strip_proto( $2 ) " " strip_proto( $4 )]
+		}
+	}
+
+
+function munch_fin()
+	{
+	if ( conversation_exists )
+		{
+		s = state[conv]
+		count = $7 + 0
+		compute_count( conv, is_responder, count )
+
+		if ( s == 0 || s == 4 )
+			{
+			# this is a conversation for which we did not
+			# see both SYNs (or perhaps a conversation
+			# that we deleted because of flaws such as
+			# an out-of-sync response)
+			dump_conv( conv, s == 0 ? "SH" : "SHR" )
+			delete_conv( conv )
+			return
+			}
+
+		if ( s == 1 )
+			{
+			if ( $8 == "ack" && $9 != 0 )
+				{
+				# We can make a tentative estimate of the
+				# count in the other direction, too.  This
+				# is useful if the connection subsequently
+				# terminates due to a RST instead of a FIN.
+				compute_count( conv, ! is_responder, $9 )
+				}
+
+			if ( is_responder )
+				state[conv] = 3
+			else
+				state[conv] = 2
+			}
+
+		else if ( (s == 2 && is_responder) ||
+			  (s == 3 && ! is_responder) )
+			{ # this is the closing part of the conversation
+			dump_conv( conv, "SF" )
+			delete_conv( conv )
+
+			++num_completed_conversations
+			}
+		else
+			++repeated_finishes
+		}
+
+	else
+		++false_finishes
+	}
+
+
+function bogon()
+	{
+	print "### bogon:", $0 >"/dev/stderr"
+	++bogons
+	}
+
+function is_local_site( site )
+	{
+	return site ~ /^((128\.3)|(131\.243))\./
+	}
+
+function is_neighbor_net( site )
+	{
+	return site ~ /^(128\.32|136\.152)\./
+	}
+
+function dump_conv( c, status )
+	{
+	if ( c in rst_time )
+		{ # Special case.
+		status = "RST" (state[c] == 3 ? "R" : "O") "S" state[c]
+		t = rst_time[c]
+		}
+	else
+		t = time
+
+	flags = ""
+
+	ohost = orig_host[c]
+	rhost = resp_host[c]
+
+	if ( is_local_site( ohost ) )
+		{
+		flags = flags "L"
+		++num_local_initiated_conversations
+		}
+	else
+		{ # from now on, ohost is used for the local host instead
+		tmp = ohost
+		ohost = rhost
+		rhost = tmp
+		}
+
+	if ( is_neighbor_net( ohost ) || is_neighbor_net( rhost ) )
+		{
+		flags = flags "N"
+		++neighbor_conversations
+		}
+
+	if ( renumber_local || renumber_all )
+		{
+		if ( ohost in renumbered_hosts )
+			ohost = renumbered_hosts[ohost]
+		else
+			ohost = renumbered_hosts[ohost] = ++nhosts
+		}
+
+	if ( renumber_all )
+		{
+		if ( rhost in renumbered_hosts )
+			rhost = renumbered_hosts[rhost]
+		else
+			rhost = renumbered_hosts[rhost] = ++nhosts
+		}
+
+	have_orig_bytes = c in orig_bytecount
+	have_resp_bytes = c in resp_bytecount
+
+	print start_time[c], t ? t - start_time[c] : "?",
+	      proto[c],
+	      have_orig_bytes ? orig_bytecount[c] : "?",
+	      have_resp_bytes ? resp_bytecount[c] : "?",
+	      ohost, rhost, (flags == "" ? status : (status " " flags))
+	}
+
+function delete_conv( c )
+	{
+	++starts_histo[numstarts[conv]]
+	delete numstarts[conv]
+
+	delete state[c]
+	delete start_time[c]
+	delete start_seq[c]
+	delete resp_seq[c]
+	delete orig_host[c]
+	delete resp_host[c]
+	delete orig_bytecount[c]
+	delete resp_bytecount[c]
+	delete proto[c]
+	delete ftp_conv[c]
+	delete rst_time[c]
+	}
+
+function compute_count( c, is_responder, count )
+	{
+	start_count = (is_responder ? resp_seq[c] : start_seq[c])
+
+	if ( start_count > 0 )
+		{
+		delta_count = count - start_count
+
+		if ( delta_count < 0 )
+			delta_count += 4294967296
+
+		--delta_count
+
+		if ( delta_count > 1e9 &&
+		     delta_count / (time - start_time[c]) > 1e7 )
+			# Bogus - more than a gigabyte, averaging 10 MB/sec.
+			return
+
+		if ( is_responder )
+			resp_bytecount[c] = delta_count
+		else
+			orig_bytecount[c] = delta_count
+		}
+	}
+
+function getproto( is_responder )
+	{
+	p1 = get_proto_in_str( is_responder ? $4 : $2 )
+	p2 = get_proto_in_str( is_responder ? $2 : $4 )
+
+	if ( p1 == 20 )
+		# ftp-data; use originator port
+		return proto_table[p1]
+
+	else if ( p2 in proto_table )
+		return proto_table[p2]
+
+	else if ( p2 <= 1023 )
+		return "priv-" p2
+
+	else
+		{ # Could be non-default ftp-data port.
+		h1 = strip_proto( $2 )
+		h2 = strip_proto( $4 )
+
+		if ( (h1 " " h2) in ftp_conv || (h2 " " h1) in ftp_conv )
+			# Include the port number in the connection, so
+			# mon-trace-probe does not get fooled.
+			return "ftpdata-" p2
+
+		return "other-" p2
+		}
+	}
+
+function get_proto_in_str( str )
+	{
+	nc = split( str, chunks, "." )
+	return chunks[nc]
+	}
+
+function strip_proto( str )
+	{
+	nc = split( str, chunks, "." )
+	return sprintf( "%s.%s.%s.%s",
+			chunks[1], chunks[2], chunks[3], chunks[4] )
+	}
+
+function init_tcp_proto_table()
+	{
+	proto_table[7] = "echo"
+	proto_table[9] = "discard"
+	proto_table[11] = "systat"
+	proto_table[13] = "daytime"
+	proto_table[15] = "netstat"
+	proto_table[20] = "ftp-data"
+	proto_table[21] = "ftp"
+	proto_table[23] = "telnet"
+	proto_table[25] = "smtp"
+	proto_table[37] = "time"
+	proto_table[42] = "name"
+	proto_table[43] = "whois"
+	proto_table[53] = "domain"
+	proto_table[57] = "mtp"
+	proto_table[70] = "gopher"
+	proto_table[71] = "remote-job"
+	proto_table[77] = "rje"
+	proto_table[79] = "finger"
+	proto_table[80] = "www"
+	proto_table[84] = "ctf"
+	proto_table[87] = "link"
+	proto_table[95] = "supdup"
+	proto_table[101] = "hostnames"
+	proto_table[102] = "iso-tsap"
+	proto_table[105] = "csnet-ns"
+	proto_table[109] = "pop-2"
+	proto_table[110] = "pop-3"
+	proto_table[111] = "sunrpc"
+	proto_table[113] = "auth"
+	proto_table[117] = "uucp-path"
+	proto_table[119] = "nntp"
+	proto_table[123] = "ntp"
+	proto_table[137] = "netbios-ns"
+	proto_table[138] = "netbios-dgm"
+	proto_table[139] = "netbios-ssn"
+	proto_table[150] = "sql-net"
+	proto_table[175] = "vmnet"
+	proto_table[179] = "bgp"
+	proto_table[210] = "Z39.50"
+	proto_table[433] = "nnsp"
+	proto_table[512] = "exec"
+	proto_table[513] = "login"
+	proto_table[514] = "shell"
+	proto_table[515] = "printer"
+	proto_table[520] = "efs"
+	proto_table[530] = "courier"
+	proto_table[540] = "uucp"
+	proto_table[543] = "klogin"
+	proto_table[544] = "kshell"
+	proto_table[2784] = "www-devel"
+	proto_table[5190] = "aol"
+	proto_table[6000] = "X11"
+	proto_table[6001] = "X11"
+	proto_table[6667] = "IRC"
+	proto_table[17003] = "X.500DSA"
+	proto_table[17007] = "isode-dua"
+	}
+
+
+function gripe( msg )
+	{
+	print msg
+	exit 1
+	}'

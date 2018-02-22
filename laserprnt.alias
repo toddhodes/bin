@@ -1,0 +1,30 @@
+there's been a huge amount of mail asking me for my
+laserprinting script.  So here it is for general
+consumption.  It's very crude, and requires the ppm
+utilities found on most unix machines, it will only 
+work on a unix computer(I use an ss2!!)
+
+it's just an alias, and here it is...
+
+alias lasgif "giftoppm \!*.gif | ppmtovort > \!*.vort; vort2ps \!*.vort \!*.ps; laser \!*.ps; checklaser; rm *.vort; rm *.ps"
+
+
+you can dispense with the checklaser, but will need another alias 'laser' that
+is simply an alias, mine looks like this;
+
+alias laser "lpr -Plw \!*"
+
+my checklaser;
+
+alias checklaser "lpq -Plw"
+
+simply tells me how long I have to wait!
+
+to use the alias, I'll give an example...
+
+I want to print elle.gif.
+
+lasgif elle  (note, do NOT include the .gif extension)
+
+the rest is done for you...
+

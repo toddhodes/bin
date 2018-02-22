@@ -1,0 +1,7 @@
+#!/bin/bash
+
+\tree "$@" | grep -v " CVS$" | grep -v " Entries$" \
+            | grep -v " Repository$"  \
+            | grep -v " Root$" | grep -v " Template$"
+
+

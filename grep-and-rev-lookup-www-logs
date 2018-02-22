@@ -1,0 +1,9 @@
+case $1 in
+"") echo "Usage: $0 <grep param>" ; exit ;;
+esac
+
+cd /var/log/httpd
+for i in `cat acc*gz | gunzip | grep $1 | cut -f1 -d" " | sort |uniq`
+do 
+  nslookup $i | grep "Name" | cut -f2 -d":"
+done

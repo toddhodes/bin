@@ -1,0 +1,50 @@
+#!/bin/bash
+
+#set -o xtrace
+
+cb=$CATALINA_BASE/logs/catalina.out
+tmpf=/tmp/of.$RANDOM.txt
+
+
+echo 
+echo " --- Summary for `date` ---"
+echo 
+
+echo "logfile is"
+\ls -s $cb
+echo ; echo ; echo
+
+echo " -- Unique users:  (ignore small integers, which are tests from wavemarket)"
+echo 
+grep returning.wapid $cb | cut -d\| -f5  | cut -d: -f2 | sort | uniq > $tmpf
+cat $tmpf
+echo
+echo " total = `cat $tmpf | wc -l`"
+
+echo ; echo ; echo
+echo " -- Location requests:"
+echo 
+grep location.result: $cb | cut -d\| -f2 > $tmpf
+cat $tmpf
+echo 
+echo " total = `cat $tmpf | wc -l`"
+
+
+echo ; echo ; echo
+echo -n " -- Map requests:"
+grep Content-Length.in.header $cb | wc -l
+echo
+
+echo ; echo ; echo
+echo -n " -- Route requests:"
+grep GeoServerRoutin $cb | grep create  | wc -l
+echo
+
+echo ; echo ; echo
+echo " -- Category request counts:"
+grep poiByCategory $cb | cut -d\& -f3 | sort | uniq -c
+echo
+
+rm -f $tmpf
+
+

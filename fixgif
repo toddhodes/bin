@@ -1,0 +1,10 @@
+if [ $# -lt 1 ] 
+then
+	echo "Usage: $0 <files to fix>"
+	exit
+fi
+
+for i in $@
+do
+	dd if=$i of=$i.fix bs=128 skip=1
+done

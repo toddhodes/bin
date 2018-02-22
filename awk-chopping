@@ -1,0 +1,7 @@
+#!/usr/bin/awk
+BEGIN { BODY=0; DONE=0 }
+/^$/ { if(!BODY) {BODY=1; print} ;  if (!DONE) CHOPPING=1 }
+/summary follows/ { CHOPPING=0; DONE=1 }
+{ if (!CHOPPING) print }
+
+

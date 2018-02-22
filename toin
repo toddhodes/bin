@@ -1,0 +1,20 @@
+## #!/bin/sh
+
+cd
+
+if [ -e Mail/in ]
+then
+  maildir=~/Mail 
+else
+  maildir=~/CS/Mail
+fi
+
+if [ ! -e $maildir/in ]
+then
+  echo "Cannot find Mail/in file" ;
+  exit
+fi
+
+cd $maildir
+echo "." | ci -l in
+cat $MAIL >> in

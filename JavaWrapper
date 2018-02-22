@@ -1,0 +1,47 @@
+#!/bin/sh
+#
+# JavaWrapper - shell wrapper for Java applications
+#
+# Sets a CLASSPATH and then runs the java interpreter on the class that
+# the script was invoked as.
+#
+# We set up CLASSPATH here so that you can avoid having a CLASSPATH in your
+# standard environment, which is bad because then browsers such as Netscape
+# will use local copies of classes that you're trying to debug, giving you
+# different security restrictions, and making you very confused.
+#
+# To use this just make a symlink pointing at this script, with
+# the name of your Java class.  For example, if you want to use it
+# for a program called WebCat, in your bin or scripts directory
+# you'd say:
+#   ln -s JavaWrapper WebCat
+# Then you can run your Java program directly as WebCat.
+#
+# The only other wrinkle in this script is that -D property-setting args
+# have to come before the class name, so we have to switch them around.
+#
+# Copyright (C) 1996 by Jef Poskanzer <jef@acme.com>.  All rights reserved.
+
+if [ "$CLASSPATH" = "" ] ; then
+    # Change this to point to your own Java classes directory.
+    CLASSPATH="$HOME/java"
+    export CLASSPATH
+fi
+
+name=`echo $0 | sed -e 's,.*/,,'`
+
+dargs=""
+while true ; do
+    case "$1" in
+    -D*)
+        dargs="$dargs $1"
+        shift
+    ;;
+    *)
+        break 2;
+    ;;
+    esac
+done
+
+java -mx100000000 $dargs $name $*
+

@@ -1,0 +1,11 @@
+if [ "X$1" == "X-" ]
+then
+  shift;
+  ls -Llag "$@" | awk '{ a+=$5 } END{printf("size: %d\n",a)}'
+else
+  ls -Llag "$@" | awk '{ a+=$4 } END{printf("size: %d\n",a)}'
+fi
+#ls -lag $@|cut -c30-40|awk '{s+=$1} END {print "size:", s}'
+#ls -lag $@|cut -c20-31|awk '{s+=$1} END {printf "size: %d", s}'
+#ls -lag $@ | awk '{ a+=$5 } END{printf("size: %d\n",a)}'
+#ls -lag $@ | awk '{ a+=$4 } END{printf("size: %d\n",a)}'

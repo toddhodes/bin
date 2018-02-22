@@ -1,0 +1,4 @@
+OTA_JAVA_BUILD=${OTA_JAVA_BUILD:-/ext/build/ota_java/latest/best/ubuntu-10.04-64/ota_java/}
+
+java -jar $OTA_JAVA_BUILD/lib/ota-java-client.jar http://localhost:8080/ota deploynext /dev/null  /opt/wm/data/ota/WindowsPhone_7/FamilyMap.10.15.xap WindowsPhone_7 ATTFamilyMap
+

@@ -1,0 +1,2 @@
+cat $1 | sed 's/\(%!PS.*\)/\1 EPSF-2.0/' >/tmp/..ps.fix
+/bin/mv /tmp/..ps.fix $1

@@ -1,0 +1,1 @@
+ssh -X jenkins@build-android1 /opt/android/android-sdk-linux/tools/android

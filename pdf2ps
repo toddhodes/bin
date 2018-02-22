@@ -1,0 +1,11 @@
+
+case $1 in
+"") echo "Usage: $0 <list of pdf files>" ; exit ;;
+esac
+
+for i in $*
+do
+  echo "acroread -toPostScript $i > `basename $i .pdf`.ps"
+  acroread -toPostScript $i > `basename $i .pdf`.ps
+done
+

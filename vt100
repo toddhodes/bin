@@ -1,0 +1,2 @@
+export TERM=vt100
+eval `resize`

@@ -1,0 +1,75 @@
+if [ `uname` = "HP-UX" ] ; then
+ opt=-ef
+ shortopt=-ef
+else
+ opt=auxww
+ shortopt=ax
+fi
+
+myname=`basename $0`
+
+minus9=""
+case "$1" in
+"-9") shift; minus9=" -9 " ;;
+esac
+
+psres=`ps $opt | grep $LOGNAME | grep -v grep | grep -v $myname | \
+	grep $* | awk '{print $2}'` 
+psres=`echo $psres | sed 's/ / /g'`
+
+if [ `echo $psres | wc -w` -gt 1 ]; then
+	echo "found too many things:"
+	 # echo $psres + their opts
+         ps $opt | grep $LOGNAME | grep -v grep | grep -v $myname | grep $*
+         # greparg=`echo $psres | sed 's/ /\\\\|/g'`
+         # ps $shortopt | grep "$greparg" | grep -v grep | awk '{print $1,$5,$6}'
+	echo 
+	echo  kill $minus9 $psres
+	echo 
+	echo "kill 'em all?"
+	read yeano
+	case $yeano in
+		"y"|"Y") echo okay... ;;
+		*) exit ;;
+	esac
+fi
+
+if [ X"$psres" != "X" ] ; then
+  echo "-- killing '$*' via"
+  echo kill $minus9 $psres
+  kill $minus9 $psres
+else
+  echo "not killing '$*' : not found"
+fi
+
+
+##!/bin/sh
+#case `uname` in
+#SunOS)
+#        PS_OPT='-gjwwx'
+#;;
+#HP-UX)
+#        PS_OPT='-ef'
+#;;
+#*)
+#        echo Unknown platorm, Use ps and kill manualy
+#        exit
+#esac
+# 
+#if [ $# -gt 0 ]
+#then
+#       while [ $# -gt 0 ]
+#       do
+#             kill -9 `ps $PS_OPT | awk '/'"$1"'/ &&  !/'"$$"'/ { print $2 }'`
+#             shift
+#       done
+#else
+#       ps $PS_OPT
+#       echo Which to kill?
+#       killname=""
+#       read killname
+#       if [ -n "${killname}" ]
+#       then
+#         kill -9 `ps $PS_OPT | awk '/'"$killname"'/ &&  !/'"$$"'/ { print$2 }'`
+#       fi
+#fi

@@ -1,0 +1,8 @@
+case $1 in
+"") echo "usage: $0 <outfilename>" ; exit ;;
+esac
+
+echo "click a window, will be saved as '$1'"
+
+xwd | xwdtopnm | ppmquant 256 | ppmtogif > $1
+

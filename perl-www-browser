@@ -1,0 +1,9 @@
+#!/usr/sww/bin/perl 
+use Tk;$w=new MainWindow;$q=$w->Button(-text,Quit,-command,\&exit);$q->pack;
+$o=$w->Button(-text,'Open that URL',-command,sub{$_=$t->get("insert linestart",
+"insert lineend");$t->delete("1.0","end");goto L});$o->pack;$t=$w->Text;$s=
+$w->Scrollbar(-command,[yview,$t]);$s->pack(-side,left,-fill,'y');$t->configure
+(-yscrollcommand,[set,$s]);$_=pop;$t->pack(-expand,'y',-fill,both);L:($h,$u)=
+(m!/([^:/]+)(/[^ ]*) ?!);open(H,"(echo GET $u;sleep 9)|telnet $h 80|");$_=<H>;
+s/<A HREF="([^"]*)"[^<]*>/#$1 #/gi;s/<.*?>//sg;s/\n+/\n/gs;for(split $_){
+$t->insert("1.0","$_\n")}MainLoop

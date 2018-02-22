@@ -1,0 +1,8 @@
+
+TINDER=/ext/build/main/tinderbuilds/latest/src
+
+CLASSPATH=$TINDER/../redhat-7.3/wmutils/lib/wmutils.jar:$TINDER/tps/java/jars/log4j/dist/lib/log4j-1.2.8.jar:$TINDER/tps/java/jars/jdom/jdom.jar
+#export CLASSPATH=/ext/home/todd/linux/wmutils/lib/wmutils.jar:$TINDER/java/jars/log4j/dist/lib/log4j-1.2.8.jar:$TINDER/tps/java/jars/jdom/jdom.jar
+#export CLASSPATH=/ext/home/todd/cvs/wmutils/../../redhat-8.0/wmutils/lib/wmutils.jar:$TINDER/tps//java/jars/log4j/dist/lib/log4j-1.2.8.jar:$TINDER/tps/java/jars/jdom/jdom.jar
+
+java -cp $CLASSPATH com.wavemarket.wmutils.xml.XMLPrettyPrint "$@"

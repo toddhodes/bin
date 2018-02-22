@@ -1,0 +1,10 @@
+
+case $1 in 
+"") echo "Usage: $0 <file>" ; exit ;;
+esac
+
+nenscript -fCourier5 -B1Rg -p- $1| ghostview -
+echo "will now print without ^C"
+echo
+read
+nenscript -fCourier5 -B1Rg $1

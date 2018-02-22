@@ -1,0 +1,7 @@
+
+
+#. /var/tmp/e-naviserver
+#$NAVIGATION_SERVER_BUILD/bin/navRequest -R -c "2.169961,41.385817" -a "C/ Portaferrissa 28,,Barcelona,Barcelona,,Spain" -P 
+
+navpath=/ext/build/navigation_server/latest/tinderbuilds/latest/debian-3.1/server
+$navpath/bin/navRequest "$@"

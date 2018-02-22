@@ -1,0 +1,19 @@
+#!/bin/sh
+# path trick for wish variants \
+exec wish $0 ${1+"$@"}
+
+#!/usr/sww/bin/wish
+##!/usr/sww/bin/wish-4.0b4 -f
+
+button .but -text "-->" -command gonet
+pack .but
+
+proc gonet {} {
+  set url [selection get]
+  if ([regexp {^ *http:|^ *HTTP:|^ *file:} $url]) {
+    set urlarg openURL($url)
+    if ([catch {exec netscape -remote $urlarg}]) {
+      catch {exec netscape $url &}
+    }
+  }
+}

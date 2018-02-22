@@ -1,0 +1,19 @@
+#!/usr/bin/perl 
+
+use English;
+die "usage: $PROGRAM_NAME [<time>]\n" if $#ARGV > 0;
+if ($#ARGV == -1) {
+    $timein = time;
+} else {
+    $timein = shift(@ARGV);
+}
+
+($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime($timein);
+print "local: ", scalar(localtime($timein)), "       gmt: ", scalar(gmtime($timein)), "\n";
+
+#print "time is: $timein\n";
+#print "sec\tmin\thour\tmday\tmon\tyear\twday\tyday\tisdst\n";
+#print "$sec\t$min\t$hour\t$mday\t$mon\t$year\t$wday\t$yday\t$isdst\n";
+
+#$battery = (((($timein >> 7) * 1000) >> 7) & 3) ^ 3;
+#print "battery = $battery\n";

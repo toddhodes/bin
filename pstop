@@ -1,0 +1,24 @@
+# mytop2
+# 
+# shows the top few processes continously
+
+# use -ef instead of -aux on HP-UX
+args="-aux"
+if [ `uname -s` = "HP-UX" ]
+then
+    args="-ef"
+fi
+
+while true ; do
+    clear
+    echo "USER       PID %CPU %MEM   SZ  RSS TT STAT START  TIME COMMAND"
+
+    if [ $# -eq 0 ] ; then
+	ps $args | grep '^[^PID]*$' | sort -n -r +2  
+    else
+	ps $args | grep '^[^PID]*$' | sort -n -r +2 | head -$1
+    fi
+    sleep 5
+done
+
+

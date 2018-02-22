@@ -1,0 +1,56 @@
+
+req_file=/tmp/`basename $0`-request
+resp_file=/tmp/`basename $0`-response
+
+cat > $req_file <<"EOF"
+<?xml version="1.0" encoding="UTF-8"?>
+<MCP version="1.0">
+  <IMAGE_REQUEST>
+    <ME_PARAMETERS>
+      <CLIENT msid="[WAPID]FAKE_FROM_REN" name="Samsung_A700" type="J2ME/MIDP" font="Hershey10" releaseid="050622_01" lang="english-us" />
+      <ENDIAN big="true" />
+      <COMPRESSION type="none" />
+      <TRANSPORT format="application/x-wavemarket-map" />
+      <RESOLUTION height="185" width="176" />
+      <COORD_FRAME return="true" />
+      <RETURN_WIDTH />
+      <LABEL_DICTIONARY />
+      <RESIZE />
+      <ACCEPTS_MULTIPART return="application/x-wavemarket-map" />
+      <RETURN_ROADNETWORK_IMAGE format="image/png" novector="shapes" />
+    </ME_PARAMETERS>
+    <REGION>
+      <CENTERED_BOX>
+        <REFERENCE id="1.1" />
+        <WIDTH meters="58590" />
+      </CENTERED_BOX>
+    </REGION>
+    <LAYER_LIST>
+      <LAYER id="1">
+        <SERVICE>
+          <MERCHANT return="address">
+            <NEIGHBORS max="100">
+              <SEARCH keyword="&amp;postal=23228" />
+            </NEIGHBORS>
+          </MERCHANT>
+        </SERVICE>
+      </LAYER>
+      <LAYER id="2">
+        <SERVICE>
+          <POI category="33" max="100" />
+        </SERVICE>
+      </LAYER>
+      <LAYER>
+        <ROADNETWORK />
+      </LAYER>
+    </LAYER_LIST>
+  </IMAGE_REQUEST>
+</MCP>
+EOF
+
+POST http://209.209.80.169:8080/nearhere/mcp < $req_file > $resp_file
+len=`wc -c $resp_file | awk '{print $1}'`
+
+[ $len -eq 256 ] && echo "WARNING: nearhere demo response is error msg size!"
+
+

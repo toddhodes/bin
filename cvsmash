@@ -1,0 +1,7 @@
+#!/bin/sh
+
+CVSROOT=":kserver:mash:/usr/src/mash/repository"
+#CVSROOT=":kserver:mash:/usr/mash/src/cvsroot"
+export CVSROOT
+
+cvs $*

@@ -1,0 +1,2 @@
+#!/bin/sh
+perl -e "srand() ; print int(rand($1))" 

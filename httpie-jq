@@ -1,0 +1,2 @@
+for r in `http GET http://artifactory.engr.wavemarket.com/api/repositories | jq -r 'sort_by(.key) | .[] | .key'`; do echo "# $r"; http -a build:4mllFri8 --body http://artifactory.engr.wavemarket.com/api/repositories/$r; done
+

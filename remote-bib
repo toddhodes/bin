@@ -1,0 +1,19 @@
+
+case $1 in
+"-m") echo "rsh to $2 ..." ;  \
+    rsh $2 "cd $PWD; lat $3 $4 $5 $6" </dev/null; \
+    exit ;; 
+esac
+
+host=`telnet now 15894 2>/dev/null | awk "/suggest/ {print \\$2}"`
+case $host in
+"") echo "no load info from u98: rsh to hardcoded now ... " ; \
+	rsh now "cd $PWD; bibtex $1 $2 $3 $4 </dev/null" ; \
+	exit ;;
+esac
+
+
+echo "rsh to $host ... "
+# u no longer accepting kerberos....
+#rsh $host "cd $PWD; bibtex $1 $2 $3 $4 </dev/null"
+rsh now "cd $PWD; bibtex $1 $2 $3 $4 </dev/null"

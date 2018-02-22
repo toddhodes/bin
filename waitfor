@@ -1,0 +1,10 @@
+case $1 in
+"") echo "Usage: $0 <person to check's login>" ; exit
+esac
+
+while [ `1f | grep $1 | head -1`x = x ]
+do
+    echo > /dev/null
+done
+
+echo "$1 is here!" | m me

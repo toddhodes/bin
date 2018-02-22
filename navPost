@@ -1,0 +1,10 @@
+#!/bin/sh
+
+server="http://askwheredemo2:8080/navserver/client"
+server="http://aws-web/navserver/client"
+server="http://aw-web/navserver/client"
+server="http://frijole3:8080/navserver/client"
+server="http://aw-spain.wavemarket.com/navserver/client"
+navpath=/ext/build/navigation_server/latest/tinderbuilds/latest/debian-3.1/server/bin
+
+POST -C 8378:nav1gat3 "$server" | $navpath/navResponse

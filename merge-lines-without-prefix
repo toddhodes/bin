@@ -1,0 +1,11 @@
+#
+# use this to merge logfile lines that have been split
+#
+
+case $1 in
+"") echo "$0 <substring to prefix>" ; exit;;
+esac
+
+awk '$0 ~ /'$1'/ { printf "\n%s", $0 }  $0 !~ /'$1'/ { printf "%s", $0 }'
+echo
+

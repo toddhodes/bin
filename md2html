@@ -1,0 +1,10 @@
+#!/ext/home/todd/.virtualenvs/md2html/bin/python2.7
+# EASY-INSTALL-ENTRY-SCRIPT: 'typeface==1.1.dev15','console_scripts','md2html'
+__requires__ = 'typeface==1.1.dev15'
+import sys
+from pkg_resources import load_entry_point
+
+if __name__ == '__main__':
+    sys.exit(
+        load_entry_point('typeface==1.1.dev15', 'console_scripts', 'md2html')()
+    )

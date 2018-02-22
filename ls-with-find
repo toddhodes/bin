@@ -1,0 +1,3 @@
+
+#find $1 -printf "-=- %p (%P) -=-\n chg: %c \n access: %a \n mod: %t \n sz: %k \n perm: %m \n"
+find $1 -printf "-=- %p (%P) -=- chg: %c  access: %a  mod: %t  sz: %k  perm: %m \n"

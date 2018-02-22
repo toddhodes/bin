@@ -1,0 +1,5 @@
+export FMHOME=/usr/sww/frame
+export FM_FLS_HOST=shallot.cs.berkeley.edu
+export FRAMEUSERSD_HOST=shallot.CS.Berkeley.EDU
+export FRAMEUSERSD_RC=/usr/sww/frame/license-data/shallot/autostart
+echo "frame is /usr/sww/frame/bin/maker"

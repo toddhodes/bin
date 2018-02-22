@@ -1,0 +1,8 @@
+
+case $1 in
+"") echo "Usage: $0 <png file>" ; exit 1 ;;
+esac
+
+convert $1 ico.ppm
+ppmtowinicon -output favicon.ico ico.ppm 
+

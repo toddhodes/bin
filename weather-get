@@ -1,0 +1,320 @@
+#!/bin/sh
+#
+# @(#) wx 1.8, November 25 1992
+#
+# Copyright (C) 1992, Peter St.Wecker (pswecker@med.unc.edu)
+#
+# This script may be freely re-distributed at no charge provided that
+# this notice is left intact.  Modified copies must preserve this notice.
+# It is requested that any useful changes you make be sent to the author.
+#
+# Thanks to: Dale A. Harris (rodmur@ecst.csuchico.edu)
+#            Kevin Bluml (kevin@ferris.cray.com)
+#
+# Special thanks to Jeff Masters (jmasters@madlab.sprl.umich.edu) for all
+# his work on the Weather Underground.
+#
+# NOTE:  The National Weather Service data is made available courtesy of
+#        the National Science Foundation-funded UNIDATA project and the
+#        University of Michigan.
+#
+# WX:
+# A simple (but ugly) shell program to retrieve state and local weather
+# reports from the Weather Underground at downwind.sprl.umich.edu.
+#
+# Usage: wx {state-code} --> retrieve WX for a state (ie. AL, AK, etc.)
+#        wx {city-code}  --> retrieve WX for a city  (ie. NYC, RDU, etc.)
+#        wx {number-code} --> retrieve Canadian WX (number 1-20)
+#        wx -can           --> retrieve Canadian zone numbers
+#        wx -ski           --> retrieve ski report zone numbers
+#        wx -ski {number-code} --> retrieve ski reports (number 1-9)
+#        wx -st {state-code} --> retrieve {city-codes} for a given state
+#        wx -f {city-code} --> retrieve 1-2 day forecast for a city.
+#        wx -s {city-code} --> retrieve severe weather for a city.
+#        wx -c {city-code} --> retrieve climatic data for a city. 
+#        wx -e {city-code} --> retrieve extended forecast for a city.
+#        wx -all {city-code} --> retrieve all data for a city.
+#        wx -q   --> retrieve earthquake report
+#        wx -us  --> retrieve national weather summary
+#        wx -h {ocean-code} --> retrieve hurricane info for an ocean
+#                               (a=Atlantic,ep=East Pacific,wp=West Pacific,
+#                                i=Indian Ocean)
+#        wx -int {international-code} --> retrieve international WX info
+#                                         (c=Carribean,am=Central and South
+#                                          America,w=World cities)
+#        wx -x   --> connect interactivly to weather underground
+#        wx -h   --> show help message
+#
+# If a single code was entered, should be city, state, national, or quake.
+# Entry can only be two (NC) or three (RDU or -us) letters.
+
+site="um-weather.sprl.umich.edu"
+port="3000"
+
+case $1 in
+     [0-9]) m=0$1 ;;
+         *) m=$1 ;;
+esac
+
+if [ $# -eq 1 ]
+then
+      case $m in
+      -us)
+           (echo ''
+           echo 'c'
+           echo '4'
+           echo '9'
+           echo 'x' ; sleep 50) |  \
+           telnet $site $port 2> /dev/null | sed \
+           -e  '1,/OPTION/d' \
+           -e  '/UNDERGROUND/,/NWX1/d' \
+           -e  '/Select/,/Selection/d' \
+           -e  '/Not/,/Selection:/d' \
+           -e  '/*/d' \
+           -e  '/----/d' | tr -d '\015' 
+      exit
+      ;; 
+      -q)
+	  (echo ''
+	  echo 'c'
+	  echo '4'
+	  echo '6'
+	  echo 'x' ; sleep 50) | \
+	  telnet $site $port 2> /dev/null | sed \
+          -e  '1,/12 lines/d' \
+          -e '/WEATHER UNDERGROUND/,/questions/d' \
+	  -e '/number/,/Unlimited/d' \
+	  -e 's/                   Selection://g' \
+          -e  '/*/d' \
+	  -e '/----/d' | tr -d '\015'
+     exit
+     ;;
+      -s|-e|-f|-e|-all)
+           echo 1>&2 'Option '$1' requires an identifier. Type wx for info.'
+      exit 1 
+      ;;
+      -x)
+           telnet $site $port
+      exit
+      ;;
+      -can)
+           echo 1>&2 'To recieve Canadian forecasts, type 'wx' followed'
+           echo 1>&2 'by a location number from the following:'
+           echo 1>&2 ''
+           (echo ''
+	   echo '2'
+	   echo 'x' ; sleep 50) | \
+	   telnet $site $port  2>/dev/null | sed \
+           -e '1,/^Press Return/d' \
+           -e '/WEATHER UNDERGROUND/,/Selection:/d' \
+	   -e '/M) Return to main menu/,/^--------------/d' \
+	   -e '/^Connection/d' | tr -d '\015'
+      exit
+      ;;
+      -ski)
+           echo 1>&2 'To recieve ski reports, type 'wx' followed'
+           echo 1>&2 'by a location number from the following:'
+           echo 1>&2 ''
+           (echo ''
+	   echo '4'
+	   echo 'x' ; sleep 50) | \
+	   telnet $site $port  2>/dev/null | sed \
+           -e '1,/^Press Return/d' \
+           -e '/WEATHER UNDERGROUND/,/Selection:/d' \
+	   -e '/X) Exit program/,/^--------------/d' \
+	   -e '/^Connection/d' | tr -d '\015'
+      exit
+      ;;
+      [0-9][0-9])
+	   (echo $1'+'
+	   echo 'x' ; sleep 50) | \
+	   telnet $site $port  2>/dev/null | sed \
+	   -e '1,/^Press Return/d' \
+	   -e '/CANADIAN FORECASTS/,/^--------------/d' \
+	   -e '/^Connection/d' | tr -d '\015'
+      exit
+      ;;
+      [A-Za-z][A-Za-z][A-Za-z])
+           (echo $1'u' 
+           echo 'x' ; sleep 50) | \
+           telnet $site $port  2>/dev/null | sed \
+           -e 's/SEVERE/SEVERE/g' \
+           -e 's/SPECIAL/SPECIAL/g' \
+           -e '1,/^Press Return/d' \
+           -e '/CITY FORECAST MENU/,/^---------/d' \
+           -e '/^Connection/d' | tr -d '\015' 
+      exit
+      ;;
+      [A-Za-z][A-Za-z])
+	   (echo $1'+'
+	   echo 'x' ; sleep 50) | \
+	   telnet $site $port  2>/dev/null | sed \
+	   -e '1,/^Press Return/d' \
+           -e '/CURRENT WEATHER MENU/,/^--------------/d' \
+	   -e '/^Connection/d' | tr -d '\015'
+      exit
+      ;;
+     -h)
+   echo 1>&2 'Usage:  wx [option] id-code, where [option] is:'
+   echo 1>&2 ''
+   echo 1>&2 'state-code  (ie. NC, NY, etc.)   | city-code (ie. RDU,NYC)'
+   echo 1>&2 'number-code (Canadian forecast)  | -can (Canadian zone list)'
+   echo 1>&2 '-ski number-code (Ski report)    | -ski (Ski report zone list)'
+   echo 1>&2 '-st state-code (City codes in state) | -f city-code (Forecast)'
+   echo 1>&2 '-s city-code (Severe weather)    | -c city-code (Climatic data)'
+   echo 1>&2 '-e city-code (Extended forecast) | -all city-code (All WX info)'
+   echo 1>&2 '-us  (National Weather Summary)  | -q (Earthquake report)'
+   echo 1>&2 '-h ocean-code (Hurricane advisories)'
+   echo 1>&2 '              (a=Atlantic, ep=East Pacific, wp=West Pacific,'
+   echo 1>&2 '              i=Indian Ocean)'
+   echo 1>&2 '-int world-code (International Weather)'
+   echo 1>&2 '                 (c=Carribean, am=Central and South America,'
+   echo 1>&2 '                  w=World cities)'
+   echo 1>&2 '-x (Connect interactivly to WX server)'
+   echo 1>&2 ''
+   echo 1>&2 'The National Weather Service data is made available courtesy'
+   echo 1>&2 'of the National Science Foundation-funded UNIDATA Project and'
+   echo 1>&2 'the University of Michigan.' 
+      exit 1
+      ;;
+      -*)
+           echo 1>&2 $1': Unknown option. Type wx -h for options.'
+      exit 1
+      ;;
+      *)
+           echo 1>&2 $1': Not a state or city code.'
+           exit 1
+           ;;
+      esac
+fi
+
+# If more than one entry on command-line, it should be a city-code lookup.
+# If nothing on command-line, give usage message and exit.
+
+if [ $# -ne 1 ]
+then
+      case $1 in
+      -st|-state)
+          case $2 in
+          ??)
+              (echo ''
+              echo '1'
+              echo $2
+              echo 'x' ; sleep 50) |  \
+              telnet $site $port 2>/dev/null | sed \
+              -e '1,/Selection:/d' \
+              -e '/CITY FORECAST/,/Selection:/d' \
+              -e '/Not/,/Selection:/d' \
+              -e '/*/d' \
+              -e '/---/d' | tr -d '\015'
+          exit
+          ;;
+          *) echo 1>&2 $2': Unknown.  State code may only be 2 letters.'
+          exit 1
+          ;;
+          esac
+      exit
+      ;;
+      -h)
+         case $2 in
+           a|atl) hur=1 ;;
+           ep|east) hur=2 ;;
+           wp|west) hur=3 ;;
+           i|ind) hur=4 ;;
+           *) hur=1 ;; 
+         esac
+         (echo ''
+          echo 'c'
+          echo '4'
+          echo '8'
+          echo $hur
+          echo ''
+          echo ''
+          echo ''
+          echo ''
+          echo ''
+          echo 'x' ; sleep 50) | telnet $site $port 2> /dev/null | \
+          sed -e '1,/OPTION/d' \
+              -e '/Select/,/Selection/d' \
+              -e '/WEATHER UNDERGROUND/,/Answers to/d' \
+              -e '/HURRICANE ADVISORIES/,/Selection/d' \
+              -e '/Not/,/Selection:/d' \
+              -e 's/.*menu://' \
+              -e '/*/d' \
+              -e '/---/d' | tr -d '\015' 
+        exit 
+        ;;
+
+     -c|-e|-f|-s)
+         temp=`echo $1 | tr -d '-'` 
+         (echo $2$temp
+	 echo 'x' ; sleep 50) | \
+	 telnet $site $port  2>/dev/null | sed \
+	 -e '1,/^Press Return/d' \
+	 -e '/CITY FORECAST MENU/,/^-------------/d' \
+	 -e '/^Connection/d' | tr -d '\015'
+        exit
+	;;
+
+   -all)
+        case $2 in
+        ???) 
+       	 (echo $2'+'
+	 echo 'x' ; sleep 50) | \
+	 telnet $site $port  2>/dev/null | sed \
+	 -e '1,/^Press Return/d' \
+	 -e '/CITY FORECAST MENU/,/^--------------/d' \
+	 -e '/^Connection/d' | tr -d '\015'
+	 exit
+	 ;;
+        *) echo 1>&2 $2': Unknown.  City code must by three letters.'
+         exit 1
+         ;;
+       esac
+      exit
+      ;; 
+
+
+   -int)
+	case $2 in
+	  c|car) int=1 ;;
+	  am) int=2 ;;
+	  w|world) int=3 ;;
+	  *) int=1 ;;
+        esac
+	(echo ''
+	echo 'c'
+	echo '4'
+	echo '10'
+	echo $int
+	echo 'x' ; sleep 50) | telnet $site $port  2>/dev/null | \
+	sed -e '1,/OPTION/d' \
+	    -e '/Select/,/Selection/d' \
+	    -e '/WEATHER UNDERGROUND/,/Answers to/d' \
+	    -e '/CURRENT INTERNATIONAL/,/Selection/d' \
+	    -e '/*/d' \
+	    -e '/---/d' | tr -d '\015'
+     exit
+     ;;
+
+   -ski)
+        (echo ''
+	echo 'c'
+	echo '4'
+	echo '4'
+        echo $2
+	echo 'x' ; sleep 50) | telnet $site $port  2>/dev/null | \
+	sed -e '1,/OPTION/d' \
+	    -e '/Select/,/Selection/d' \
+	    -e '/WEATHER UNDERGROUND/,/Answers to/d' \
+	    -e '/SKI REPORTS/,/Selection/d' \
+	    -e '/*/d' \
+	    -e '/---/d' | tr -d '\015'
+     exit
+     ;;
+      *) echo 1>&2 'Usage: wx [option] id-code'
+         echo 1>&2 '       wx -h for help'
+      exit
+      ;; 
+      esac
+fi

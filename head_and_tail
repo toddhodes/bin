@@ -1,0 +1,10 @@
+case $1 in
+"") h=1 ;;
+*) h=$1 ;;
+esac
+case $2 in
+"") t=1 ;;
+*) t=$1 ;;
+esac
+
+(head -$h && tail -$t)

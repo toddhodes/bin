@@ -1,0 +1,78 @@
+#!/bin/bash
+
+
+while [ "`pwd`" != '/' ]
+do
+   if [ -f ".gitmodules" ]
+   then
+       found=1
+       break
+   fi
+   cd ..
+done
+
+if [ ! "$found" ]
+then
+   echo "did not find .gitmodules anywhere all the way up to root"
+   exit -1
+fi
+
+echo "[`pwd`]"
+
+if [ "$1" = "--reset" ]
+then
+    IFS='='
+    git config --local --list | grep ^submodule | while read key value
+    do 
+        path="${key#submodule.}"
+	path="${path%.url}"
+	slash=/
+	checkpath="${path//${slash}..${slash}/parent_directory_not_allowed}"
+	checkpath="${checkpath##../}"
+	if [ "$path" != "$checkpath" ]
+	then
+	    echo bogus submodule path "$path"
+	    continue
+	fi
+        echo rm -rf .git/modules/$path
+	echo git config --local --unset "submodule.${path}.url"
+    done    
+elif [ "$1" = "--harder" ]
+then
+
+   shift
+
+   cat .gitmodules | grep '^[[:space:]]path = ' | cut -c9- | while read path
+   do 
+      ( cd $path && git status --porcelain | while read out ; do echo "$path $out" ; done )
+   done | grep . && unclean=1 
+
+   if [ "$unclean" ]       
+   then
+       echo
+       echo "You have changes in your submodules."
+       echo
+       echo -n "Proceed anyway [y=yes> "
+
+       read yorn
+
+       if [ "$yorn" != "y" ]
+       then
+           echo 
+           echo "You did not say yes, stopping."
+           exit 1
+       fi
+       
+   fi
+   
+   cat .gitmodules | grep '^[[:space:]]path = ' | cut -c9- | while read path
+   do 
+      rm -rf $path
+      rm -rf .git/modules/$path
+      git config --local --unset "submodule.${path}.url"
+   done 
+fi
+
+git submodule update --init --recursive
+exit $?
+

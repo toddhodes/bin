@@ -1,0 +1,44 @@
+#!/bin/sh
+####Subject: Emacs 19 Meta keys on HPs - a solution....
+# The purposes of this script are as follows :-
+#
+# 1 - Make Meta_L act like a real Meta key for Emacs
+# 2 - Make Meta_R act just like the Meta keys used to act
+# 3 - Move Home to shift-Home
+# 4 - Make Caps_Lock function like a control key
+# 5 - Maybe to make another key work like Caps_Lock
+
+# The following two keys get renamed therefore we use keycodes
+# When refering to them so that this script can be re-run safely.
+# Caps_Lock = 55 (0x37)
+# Meta_R = 10 (0xa)
+
+xmodmap - <<EOF
+clear mod1
+add mod1 = Meta_L
+
+clear mod2
+! Can only use keysym names with add therefore make sure 10 is Meta_R.
+keycode 10 = Meta_R
+add mod2 = Meta_R
+! Rename Meta_R (to anything) otherwise this will not work.
+keycode 10 = Mode_switch
+
+! Make Home only work if shifted
+keysym Home = 0x00 Home
+
+! Make Caps_Lock another control key
+clear Lock
+! Can only use keysym names in add commands
+! therefore make sure keycode 55 is Caps_Lock
+keycode 55 = Caps_Lock
+add control = Caps_Lock
+keycode 55 = Control_L
+
+! Create a new Caps_Lock key
+! keycode xx = Caps_Lock
+! add lock = Caps_Lock
+EOF
+
+echo DONE
+

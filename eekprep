@@ -1,0 +1,37 @@
+#!/bin/sh
+
+#  The $$ and $! act as $RANDOMs
+
+case $1 in 
+"") echo "Usage $0 <file-to-eek>" ; exit ;;
+esac
+
+thefile=$1
+thefileout=$1.eekout.$$
+thefileout2=$1.eekout2.$!
+
+echo "grep'ing ..."
+
+egrep -n "^(begin|end)" $thefile > $thefileout
+
+echo "check file $thefileout for starting begin, no fuckups (hit <return>)"
+line
+vi $thefileout
+
+
+cat $thefileout | cut -d":" -f1 | paste -  - | sed 's/	/\,/' > $thefileout2
+
+/bin/rm -f $thefileout
+
+for i in `cat $thefileout2`
+do
+  echo "lines $i $thefile >> $thefileout"
+  lines $i $thefile >> $thefileout
+done
+
+counter1=`wc -l $thefileout2`
+
+echo "check $thefileout if problems occur: should be $counter1 files"
+
+eek < $thefileout
+

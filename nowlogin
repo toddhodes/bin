@@ -1,0 +1,420 @@
+#!/usr/sww/bin/perl
+$Version = "1.1";
+$klist = "/usr/bin/klist";
+$kinit = "/usr/bin/kinit";
+@hosts = ("u98","now","u0","dawn0");
+@ports = (15894,15893,15895);
+if (0) {
+    @hosts = ("u98");
+    @ports = (15890,15891,15892);
+}
+%clusters = ("ultra" => 'u\d+',
+	     "dawn" => 'dawn\d+');
+$default_top = 18;
+$cluster_regexp = undef;
+$forced_hostname = 0;
+$show_top = undef;
+
+while ((scalar @ARGV) > 0) {
+    $_ = shift @ARGV;
+    if (/^-C(\w+)$/o && defined $clusters{$1}) {
+	$cluster = $1;
+	$cluster_regexp = $clusters{$1};
+    } elsif (/^-H(\S+)$/o) {
+	$cluster_regexp = $1;
+	$forced_hostname = 1;
+    } elsif (/^-t(op)?(\d*)$/o) {
+	$show_top = $2;
+	$show_top = $default_top unless $show_top =~ /^\d+$/o;
+    } elsif (/^$/o) {
+	# This handles an HPUX bogosity in /bin/sh where "$@" expands to "" if
+	# there are no arguments.
+    } else {
+	$clusters = join(', ',sort keys %clusters);
+	print "Unknown argument '$_'
+Usage (V$Version): $0 -C<cluster> -H<hostname> -t(op)<n>
+	top count defaults to $default_top if not specified.
+	valid clusters are $clusters\n";
+	&contactmessage;
+    }
+}
+
+($host,$port) = &get_loadconn;
+
+
+print "Getting load information from $host:$port\n";
+if ($ENV{'DISPLAY'} =~ /^(.+)(:\d+(\.\d+))$/o) {
+    $screen = $2;
+} else {
+    $screen = ":0.0";
+}
+chop($hostname = `hostname`);
+$display = "${hostname}${screen}";
+
+$need_kinit = system("$klist -t") >> 8;
+
+$tries = 0;
+while ($need_kinit) {
+    ((print "no nowlogin without kerberos\n"),&contactmessage) if ++$tries > 3;
+    print "Hit return ", 4 - $tries , " times more to abort\n" if $tries > 1;
+    print "Need to initialize your kerberos tickets.\nRunning $kinit on $hostname\n";
+    system($kinit);
+    $need_kinit = system("$klist -t") >> 8;
+}
+
+if (defined $show_top) {
+    $_ = <$conn>;
+    print "load is adjusted to partially componsate for performance differences\n";
+    print "host      adjusted load\n";
+    print "-------   -------------\n";
+    while (<$conn>) {
+	next if defined $cluster_regexp && ! /^host $cluster_regexp /o;
+	chop;
+	next unless /^host (\w+) (.+)$/o;
+	printf "%-9s %3.2f\n", $1, $2;
+	--$show_top;
+	last if $show_top == 0;
+    }
+    print "Hit return to exit\n";
+    $_ = <STDIN>;
+    exit 0;
+} elsif (defined $cluster_regexp) {
+    srand((time>>3)^($$<<1));
+    $_ = <$conn>;
+    chop;
+    @conndata = ($_);
+    if (/^suggest ($cluster_regexp)$/) {
+	$remote_host = $1;
+    }
+    $maxload = 0;
+    while (<$conn>) {
+	last if defined $remote_host;
+	chop;
+	push(@conndata,$_);
+	next unless /^host /o;
+	unless (/^host \w+ \d+(\.\d+)?$/o) {
+	    print "expected host load information, from ericd on $host:$port; not '$_'\n";
+	    print "All conn information:\n", join("\n",@conndata) , "\n";
+	    &contactmessage;
+	}
+	next unless /^host ($cluster_regexp) (\d+(\.\d+)?)$/o;
+	push(@remote_hosts,$1);
+	$load{$1} = $2;
+	$maxload = $2 if $2 > $maxload;
+    }
+    if (!defined $remote_host) {
+	$maxload += 0.25;
+	$totload = 0;
+	foreach $host (@remote_hosts) {
+	    $totload += $maxload - $load{$host};
+	}
+	$targetload = rand($totload-$maxload);
+	for($i=0;$i < (scalar @remote_hosts) && 
+	    $targetload > $load{$remote_hosts[$i]};++$i) {
+	    $targetload -= $load{$remote_hosts[$i]};
+	}
+	$i = scalar @remote_hosts - 1 if $i >= scalar @remote_hosts;
+	$remote_host = $remote_hosts[$i];
+    }
+    if ($forced_hostname && !defined $remote_host) {
+	print "******WARNING******
+$cluster_regexp is not currently in the GLUnix cluster.
+This means the machine may be down or disabled for testing.
+******WARNING******
+";
+	sleep(3);
+	$remote_host = $cluster_regexp;
+    }
+    unless (defined $remote_host) {
+	print "Unable to find remote host in cluster $cluster, matching /^$cluster_regexp /\n";
+	print "All information reported by ericd on $host:$port follows\n";
+	print join("\n",@conndata);
+	&contactmessage;
+    }
+} else {
+    $_ = <$conn>;
+    unless (/^suggest (\S+)$/o) {
+	print "Expected suggested machine from ericd on $host:$port; not '$_'\n";
+	&contactmessage;
+    }
+    $remote_host = $1;
+}
+
+&tcpsockets::closeconn($conn);
+
+if ($ENV{'DISPLAY'} =~ /:\d/o) {
+    if (-f "$ENV{'HOME'}/.noxhost") {
+	print "***** Supressing xhost.\n***** if your X display doesn't work, remove the file ~/.noxhost\n";
+    } else {
+	system("/usr/sww/X11/bin/xhost +$remote_host");
+    }
+} else {
+    print "***** X display unavailable since your display is not currently set.\n";
+    sleep(3);
+}
+
+print "Auto connecting you to $remote_host in fully encrypted mode.\n";
+
+exec "/usr/bin/telnet", "-a", "-x", $remote_host;
+
+print "Exec failed : $!";
+&contactmessage;
+
+sub get_loadconn {
+    $tries = 0;
+    my $starttime = time;
+    while(1) {
+	foreach $port (@ports) {
+	    foreach $host (@hosts) {
+		eval q!$conn = &tcpsockets'getconnection($host,$port);!;
+		return($host,$port) unless $@;
+		$x = $@;
+		$x =~ s/Bad file number at.*$//o;
+		$errmsg = "Problem getting socket to $host:$port try $tries.\n$x";
+		if ((time - $starttime) > 10) {
+		    print @errmsgs;
+		    @errmsgs = ();
+		    print $errmsg;
+		    sleep(5);
+		} else {
+		    push(@errmsgs,$errmsg);
+		    select(undef,undef,undef,0.25);
+		}
+		if (++$tries > 100) {
+		    &contactmessage;
+		}
+	    }
+	}
+    }
+}
+
+sub die {
+    print @_;
+    &contactmessage;
+}
+
+sub contactmessage {
+    print "
+Contact Eric Anderson <eanders\@cs.berkeley.edu> for problems with ericd,
+nowlogin, or nowterm.  Contact <now-admin\@now.cs.berkeley.edu> for general
+problems with the NOW.
+
+Please record the entire error message provided.
+Hit return twice to exit.
+";
+    $_ = <STDIN>;
+    $_ = <STDIN>;
+    exit(0);
+}
+
+#$Id: tcpsockets.pl,v 1.1 1992/06/08 17:02:15 eanders Exp eanders $
+package main;
+package tcpsockets;
+
+sub SOCK_STREAM {1;}
+sub AF_INET {2;}
+sub PF_INET {&AF_INET;}
+
+# End of tcp stuff
+$sockaddr = 'S n a4 x8';
+
+$localhostname = `hostname`;
+
+chop($localhostname);
+
+($name,$aliases,$type,$len,$thisaddr) = gethostbyname($localhostname);
+($type,$af,$len) if 0;
+
+unless (defined $thisaddr) {
+    print("Couldn't get address of $localhostname\n");
+    &main::contactmessage;
+}
+
+($protoname, $aliases, $proto) = getprotobyname('tcp');
+
+sub getsocket {
+    local($port) = @_;
+    $port = $port || 0;
+    $socket = &gensym'get;
+
+    print "Yabber: " , &PF_INET , ";" , &SOCK_STREAM, ";$protoname;$aliases;$proto\n";
+    socket($socket, &PF_INET, &SOCK_STREAM, $proto) 
+	|| die("$0 - socket: $!");
+    $this = pack($sockaddr, &AF_INET, $port, $thisaddr);
+    $foo = setsockopt($socket,&main'SOL_SOCKET,&main'SO_REUSEADDR,1);
+    die("Unable to setsockopt(reuseaddr):$!\n") unless defined $foo;
+#    $foo = setsockopt($socket,&main'SOL_SOCKET,&main'SO_DONTLINGER,1);
+#    die("Unable to setsockopt;$!\n") unless defined $foo;
+    bind($socket, $this) || die("$0 - bind: $!");
+    return $socket;
+}
+
+sub getport {
+    my($port) = @_;
+    die ("Internal Error:getport called wrong\n") if $#_ !=0;
+
+    ($name,$aliases,$port) = getservbyname($port,'tcp')
+	unless $port =~ /^\d+$/o;
+    return $port;
+}
+
+sub getconnection {
+package ntcp;
+    use Symbol;
+    use Socket;
+
+    local($them,$port) = @_;
+    
+    $port = &tcpsockets::getport($port);
+    my($a,$b,$proto) = getprotobyname('tcp');
+    my($socket) = gensym;
+    socket($socket,PF_INET,SOCK_STREAM,$proto);
+    
+    my($sin);
+    $sin = sockaddr_in($port,Socket::inet_aton($them));
+
+    unless(connect($socket, $sin)) {
+	&tcpsockets::closeconn($socket);
+	die ("$0: connection refused by $them:$!");
+    }
+
+    $old = select($socket); $|=1;select($old);
+
+    return $socket;
+package tcpsockets;
+}
+
+sub getacceptor {
+package ntcp;
+use Symbol;
+use Carp;
+    local($port) = @_;
+
+    $port = &tcpsockets::getport($port);
+    my $socket = gensym;
+    my $proto = getprotobyname('tcp');
+
+    $sin = sockaddr_in($port,INADDR_ANY);
+    socket($socket,PF_INET,SOCK_STREAM,$proto) || die ("Socket:$!\n");
+    bind($socket,$sin) || die ("Bind: $!\n");
+    listen($socket,SOMAXCONN) || die ("listen: $!\n");
+    $old = select($socket); $|=1;select($old);
+    
+#    $socket = &getsocket($port);
+#    listen($socket,$listenqueue);
+
+#    $old = select($socket); $|=1;select($old);
+
+    return $socket;
+package tcpsockets;
+}
+
+sub getportnumber {
+    $mysockaddr = getsockname($_[0]);
+    ($family , $port, $myaddr) = unpack($sockaddr,$mysockaddr);
+    ($family,$myaddr) if 0;
+    return $port;
+}
+
+sub getlocaladdress {
+    return unpack ('C4',$thisaddr);
+}
+    
+sub closeconn {
+    local($conn) = @_;
+    
+    close($conn);
+    &gensym'return($conn);
+}
+
+# $Log: tcpsockets.pl,v $
+#Revision 1.1  1992/06/08  17:02:15  eanders
+#Initial revision
+#
+
+package gensym;
+
+# $Id: gensym.pl,v 1.7 1992/06/23 21:15:53 jmalcolm Exp $
+
+# $Log: gensym.pl,v $
+# Revision 1.7  1992/06/23  21:15:53  jmalcolm
+# Null out things instead of undef'ing them.
+#
+# Revision 1.6  1991/06/22  23:55:15  jmalcolm
+# changed order of nreturn's parameters.
+#
+# Revision 1.5  1991/06/22  23:45:21  jmalcolm
+# nget and nreturn now accept and keep track of
+# a function to print the gensym meaningfully.
+#
+# Revision 1.4  1991/05/31  10:56:23  jmalcolm
+# added nget and nreturn to enable more accurate tracking of
+# gensym use.
+#
+# Revision 1.3  1991/05/26  01:40:28  jmalcolm
+# fixed get. I had forgetten to change a variable
+# everywhere when I changed its name..
+#
+# Revision 1.2  1991/05/26  01:13:00  jmalcolm
+# added stats and returning gensyms.
+#
+# Revision 1.1  1991/05/26  00:23:55  jmalcolm
+# Initial revision
+#
+
+$gensym = 'gensym0000000000000001';
+$totalout = 0;
+$totalin = 0;
+$totalcreated = 0;
+@list = ();
+%howtoprint = ();
+
+sub stats {
+	($totalout,$totalin,$totalcreated,$#list+1);
+}
+
+sub nget {
+	local($useid,$printfunc) = @_;
+	local($gs) = &get;
+	if ($_[1]) {
+		$howtoprint{$gs} = $printfunc;
+	}
+	$gs;
+}
+
+sub nreturn {
+	local($gs,$useid) = @_;
+	undef($howtoprint{$gs});
+	&return($gs);
+}
+
+sub get {
+	local($gs);
+	++$totalout;
+	if ($#list < 0) {
+		++$gensym;
+		++$totalcreated;
+		$gs = "gensyms'".$gensym;
+	} else {
+		$gs = shift(@list);
+	}
+	$gs;
+}
+
+sub return {
+	++$totalin;
+	local(*GS) = local($gs) = @_;
+	$GS = '';
+	%GS = @GS = ();
+#	undef($GS);
+#	undef(@GS);
+#	undef(%GS);
+	unshift(@list,$gs);
+	1;
+}
+
+sub main'getgensym {	# old, deprecated interface
+	&get;
+}
+
+1;

@@ -1,0 +1,18 @@
+
+case $1 in
+"") echo "Usage: $0 inputfile.gif" ; exit
+esac
+
+outname=`basename $1 .gif`.eps
+tmpfile=zzssxxcc.$RANDOM.pnm
+##echo "tmpfile = $tmpfile"
+
+giftopnm $1 > $tmpfile
+pnmtops -rle $tmpfile > $outname
+
+echo "created '$outname'..."
+
+/bin/rm -f $tmpfile
+unset tmpfile
+unset outname
+

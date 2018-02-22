@@ -1,0 +1,76 @@
+#
+# Grab set of gif/jpg/mpg from a (list of) webpages, where only those
+#  hrefs in those pages that actually point to *the listed files extensions* 
+#   are chased.
+#
+#
+##set -o xtrace
+#
+
+oVeR=n
+
+case $1 in
+"-over") echo "* Warning: this will overwrite files!" ; oVeR=y ; shift ;;
+*) echo "* Note: will not overwrite existing files; use \`-over' to do so" ;;
+esac
+
+tmpfile=/tmp/.mytmp.$RANDOM
+tmpfile2=/tmp/.mytmp2.$RANDOM
+
+  ( lynx_proc=XXX ; \
+    until [ X$lynx_proc = X ] ; do { \
+     sleep 4 ; \
+     this_lynx_proc=`ps auxww | grep lynx | grep -v grep | awk '{print $2}'` ; \
+     sleep 60 ; \
+     lynx_proc=`ps auxww | grep lynx | grep -v grep | awk '{print $2}'` ; \
+     #echo "lynx procs: $this_lynx_proc , $lynx_proc" ; \
+     if [ X$lynx_proc = X$this_lynx_proc -a ! -z "$lynx_proc" ] ; \
+      then { \
+	echo "$0: lynx proc >60s old" ; \
+        ps auxww | grep lynx | grep -v grep >> ERRORS ; \
+	kill $lynx_proc ; \
+     } ; \
+      #else echo "lynx proc <60s old" ; \
+     fi ; \
+    } ; done ; \
+    #echo "$0: background process dying" ; \
+  ) &
+
+for i in $*
+do
+  lynx -useragent=IE4 -dump $i > $tmpfile
+  grep http $tmpfile | grep '[jJ][pP][gG]$' | cut -d. -f2- > $tmpfile2
+  grep http $tmpfile | grep '[jJ][pP][eE][gG]$' | cut -d. -f2- >> $tmpfile2
+  grep http $tmpfile | grep '[gG][iI][fF]$' | cut -d. -f2- >> $tmpfile2
+  grep http $tmpfile | grep '[mM][pP][gG]$' | cut -d. -f2- >> $tmpfile2
+  grep http $tmpfile | grep '[mM][pP][eE][gG]$' | cut -d. -f2- >> $tmpfile2
+  #cat $tmpfile2
+  for j in `cat $tmpfile2`
+  do
+   this_file_nm=`basename $j`
+    [ -f $this_file_nm ] && [ $oVeR = n ] \
+         && echo "\`$this_file_nm' exists: Not overwriting"
+    [ $oVeR = y ] || [ ! -f $this_file_nm ] && echo "$j > $this_file_nm"
+    [ $oVeR = y ] || [ ! -f $this_file_nm ] && lynx -noreferer -dump $j > $this_file_nm
+  done
+done
+rm -f $tmpfile $tmpfile2
+
+unset this_file_nm oVeR lynx_proc this_lynx_proc
+
+
+#for i in $*
+#do
+#  lynx -source $i > $tmpfile
+#  #cat $tmpfile
+#  sed -n 's/.*[hH][rR][eE][fF]=\"\(.*[jJ][pP][gG]\)\".*/\1/p' $tmpfile 
+#  sed -n 's/.*[hH][rR][eE][fF]=\"\(.*[jJ][pP][gG]\)\".*/\1/p' $tmpfile > $tmpfile2
+#  sed -n 's/.*[hH][rR][eE][fF]=\"\(.*[jJ][pP][eE][gG]\)\".*/\1/p' $tmpfile >> $tmpfile2
+#  sed -n 's/.*[hH][rR][eE][fF]=\"\(.*[gG][iI][fF]\)\".*/\1/p' $tmpfile >> $tmpfile2
+#  #cat $tmpfile2
+#  for j in `cat $tmpfile2`
+#  do
+#    lynx -dump $j > $j
+#  done
+#done
+#rm -f $tmpfile $tmpfile2

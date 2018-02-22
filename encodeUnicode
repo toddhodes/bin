@@ -1,0 +1,33 @@
+
+case $1 in
+"") echo "usage: $0 <unicode codepoint>" ; exit -1;;
+esac
+
+U=`calc $1`
+
+if [ $U -lt 128 ] 
+then
+    printf "codepoint \u%.4x  = \t0x%.4x\n" "$U" "$U"
+    echo "bytes = $U"
+    exit 0;
+fi
+
+if [ $U -lt 2048 ]
+then
+    printf "codepoint \u%.4x  = \t0x%.4x\n" "$U" "$U"
+    C1=`calc "floor($U / 64) + 192"`
+    C2=`calc "$U % 64 + 128"`
+    echo "bytes = $C1, $C2"
+    exit 0;
+fi
+
+if [ $U -lt 55296 ]
+then
+    printf "codepoint \u%.4x  = \t0x%.4x\n" "$U" "$U"
+    C1=`calc "floor($U / 4096) + 224"`
+    C2=`calc "floor(($U % 4096)/64) + 128"`
+    C3=`calc "$U % 64 + 128"`
+    echo "bytes = $C1, $C2, $C3"
+fi
+
+

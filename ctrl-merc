@@ -1,0 +1,4 @@
+
+#x2x -to mercenary:0 -from :0 -east
+
+ssh -f mercenary x2x -to :0 -from '$prevDISPLAY' -east -resurface

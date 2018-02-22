@@ -1,0 +1,6 @@
+case $1 in
+"") arg="" ;;
+*) arg=" -open $1" ;;
+esac
+
+java -jar ~/git/external/android-classyshark/ClassySharkAndroid/ClassyShark.jar $arg

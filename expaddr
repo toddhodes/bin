@@ -1,0 +1,13 @@
+case $1 in
+"") echo "usage: $0 name@host [timeToWait]" ; exit ;;
+esac
+timeout=$2
+case $2 in
+"") timeout=1
+esac
+
+nm=`echo $1 | cut -f1 -d@`
+host=`echo $1 | cut -f2 -d@`
+echo "expanding name = $nm ; host = $host"
+(echo "expn $nm" ; sleep $timeout
+) | telnet $host 25 | grep -v ^220 | grep -v ^800 | grep -v ^Escape

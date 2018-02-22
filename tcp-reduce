@@ -1,0 +1,6 @@
+#! /bin/sh
+#
+# Given a tcpdump trace file, reduces it to one-line connection summaries.
+
+tcpdump -tt -S -n -r $1 'tcp[13] & 0x7 != 0' |
+sed 's/:/ /g' | tcp-conn | sort -n -T .

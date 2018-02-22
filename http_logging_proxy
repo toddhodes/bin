@@ -1,0 +1,5 @@
+case $1 in
+"") echo "usage: $0 <port to fwd to>"; exit 0;;
+esac
+echo "listening on 9000, forwards to $1"
+node -e "n=require('net'), n.createServer(function(c){ c.pipe(n.connect($1)).pipe(c).pipe(process.stdout)}).listen(9000)"

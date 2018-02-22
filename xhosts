@@ -1,0 +1,1 @@
+xhost| grep -v access|sed 's/INET://' | sed 's/.Berkeley.EDU//' |paste - - - -

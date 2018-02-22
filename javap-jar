@@ -1,0 +1,7 @@
+case "$1" in
+"") echo "Usage: $0 <jar>" ; exit 1 ;;
+esac
+jar=$1
+
+javap -classpath $jar -s $(jar -tf $jar | grep class | sed 's/.class//g')
+

@@ -1,0 +1,2 @@
+#!/bin/sh
+tidy -xml -indent -wrap 999999 2>/dev/null

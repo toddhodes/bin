@@ -1,0 +1,8 @@
+
+if hash frm >/dev/null 2>&1
+then
+  frm $1 | grep -n .
+else
+  (echo ; grep "^(Subject|From:)" $MAIL)  | sed 's/From: //'  | sed 's/Subject: /    /'
+fi
+

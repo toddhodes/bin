@@ -1,0 +1,10 @@
+for i in $@
+do
+  echo $i
+  hex2ip $i
+  nslookup `hex2ip $i` | sed -n 4p | awk '{print $2}'
+done
+
+
+#`for i in 0xCCA14E37 0xCCA14E25 0x80202158 0x80202158; do hex2ip $i; done`; do echo $i ; nslookup $i | sed -n 4p | awk '{print $2}';  done
+

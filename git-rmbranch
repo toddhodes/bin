@@ -1,0 +1,8 @@
+case "$1" in
+"") echo "Usage: $0 <release/0.7.0>" ; exit 1 ;;
+esac
+
+git branch -d $1
+git push --delete origin $1
+git push origin :$1
+

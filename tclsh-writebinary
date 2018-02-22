@@ -1,0 +1,23 @@
+#!/bin/sh
+# path trick for tcl variants \
+exec tclsh8.0 $0 ${1+"$@"}
+
+set f [open /dev/cuac05 r+]
+fconfigure $f -mode 1200,n,8,1
+fconfigure $f -translation binary
+fconfigure $f -blocking false
+
+#-- on
+set a [binary format "H" 40]
+#set a [binary format "H" 41]
+puts -nonewline $f $a
+flush $f
+
+after 1000
+#-- off
+set a [binary format "H" 00]
+#set a [binary format "H" 01]
+puts -nonewline $f $a
+flush $f
+
+exit

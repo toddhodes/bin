@@ -1,0 +1,31 @@
+#!/bin/bash
+
+addr=",,Berkeley,CA,94707,USA"
+addr=",,San Francisco,CA,,USA"
+addr="5858 Horton St,,Emeryville,CA,,USA"
+addr="CALLE d'ENTENCA 303,,BARCELONA,BARCELONA,,Spain"
+addr="AV DIAGONAL 640,,BARCELONA,BARCELONA,,Spain"
+addr="CALLE AMPLE 12,,BARCELONA,BARCELONA,,Spain"
+addr="Via Nazionale 17,,Roma,Roma,,Italy"
+addr="Via Pietro De Francisci 152,,Roma,,00165,Italy"
+addr="via del viminale 61,,roma,rm,,Italy"
+navpath="/ext/build/navigation_server/latest/tinderbuilds/latest/debian-3.1/server/bin"
+
+navserver="http://aws-web.wavemarket.com:8421/navserver/client"
+navserver="http://aws-web/navserver/client"
+navserver="http://ask-ads-demo.wavemarket.com/navserver/client"
+navserver="http://aw-web.wavemarket.com:8421/navserver/client"
+navserver="http://wvmrkt.com:8086/navserver/client"
+navserver="http://aw-basic.wavemarket.com:8421/navserver/client"
+navserver="http://rimdemo.wavemarket.com:8421/navserver/client"
+navserver="http://frijole3:8080/navserver/client"
+
+if [ "$1" ]
+then
+	navserver="$1"
+fi
+
+navpw="8378:nav1gat3"
+
+$navpath/navRequest -G -a "$addr" | POST -C "$navpw" "$navserver" | $navpath/navResponse
+

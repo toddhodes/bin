@@ -1,0 +1,40 @@
+
+echo "warning: this may overwrite files!"
+
+tmpfile=/tmp/.mytmp.$RANDOM
+tmpfile2=/tmp/.mytmp2.$RANDOM
+
+
+for i in $*
+do
+  lynx -dump $i > $tmpfile
+  grep http $tmpfile | grep '[jJ][pP][gG]' | cut -d. -f2- > $tmpfile2
+  grep http $tmpfile | grep '[jJ][pP][eE][gG]' | cut -d. -f2- >> $tmpfile2
+  grep http $tmpfile | grep '[gG][iI][fF]' | cut -d. -f2- >> $tmpfile2
+  #cat $tmpfile2
+  for j in `cat $tmpfile2`
+  do
+    echo "lynx -dump $j > `basename $j`"
+    lynx -dump $j > `basename $j`
+  done
+done
+rm -f $tmpfile $tmpfile2
+
+
+
+
+#for i in $*
+#do
+#  lynx -source $i > $tmpfile
+#  #cat $tmpfile
+#  sed -n 's/.*[hH][rR][eE][fF]=\"\(.*[jJ][pP][gG]\)\".*/\1/p' $tmpfile 
+#  sed -n 's/.*[hH][rR][eE][fF]=\"\(.*[jJ][pP][gG]\)\".*/\1/p' $tmpfile > $tmpfile2
+#  sed -n 's/.*[hH][rR][eE][fF]=\"\(.*[jJ][pP][eE][gG]\)\".*/\1/p' $tmpfile >> $tmpfile2
+#  sed -n 's/.*[hH][rR][eE][fF]=\"\(.*[gG][iI][fF]\)\".*/\1/p' $tmpfile >> $tmpfile2
+#  #cat $tmpfile2
+#  for j in `cat $tmpfile2`
+#  do
+#    lynx -dump $j > $j
+#  done
+#done
+#rm -f $tmpfile $tmpfile2

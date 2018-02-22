@@ -1,0 +1,3 @@
+echo "# workon aws"
+eval "$(awsenv apollo-prod-admin)"
+aws iam list-users

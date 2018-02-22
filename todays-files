@@ -1,0 +1,1 @@
+ls -lagrt `find . -name "*" -ctime -1 -print`

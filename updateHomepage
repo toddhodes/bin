@@ -1,0 +1,21 @@
+#!/bin/ksh -
+
+
+if [ ~/.mosaic-hotlist-default -nt ~/public_html/mosaic-hotlist.html ] ; then
+	convertHotlist > ~/public_html/mosaic-hotlist.html
+fi
+
+if [ ~/quotes -nt ~/public_html/quotes ] ; then
+	/bin/cp ~/quotes ~/public_html/quotes
+fi
+
+if [ ~/.MCOM-bookmarks.html -nt ~/public_html/bookmarks.html ] ; then
+	/bin/cp ~/.MCOM-bookmarks.html ~/public_html/bookmarks.html
+fi
+
+
+
+#/bin/mv ~/public_html/index.html ~/public_html/index.old
+#cat ~/public_html/index-head > ~/public_html/index.html
+#convertHotlist >> ~/public_html/index.html
+#cat ~/public_html/index-tail >> ~/public_html/index.html

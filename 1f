@@ -1,0 +1,11 @@
+end="."$1
+
+case $1 in
+"") end=""
+esac
+
+for i in `cat ~/.hosts$end`
+do
+  echo "------------------------------------"
+  finger @$i | grep -v "error in phone"
+done

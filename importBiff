@@ -1,0 +1,2 @@
+rsh fulton.seas.virginia.edu "export DISPLAY=$HOST.$_NET:0; \
+nohup /X/bin/X11/xbiff -geometry 35x64+499+75 -bg grey &" &

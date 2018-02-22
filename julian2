@@ -1,0 +1,36 @@
+From aites@lvld.hp.com Sun Sep 17 03:39:23 PDT 1995
+Article: 40 of comp.lang.awk
+Path: agate!spool.mu.edu!usenet.eel.ufl.edu!col.hp.com!news.dtc.hp.com!hpscit.sc.hp.com!aites
+From: aites@lvld.hp.com (Jim Aites)
+Newsgroups: comp.lang.awk
+Subject: Re: standard timestamp routine?
+Date: 16 Sep 1995 21:15:28 GMT
+Organization: a null point in this time-line.
+Lines: 20
+Message-ID: <43fepg$i35@hpscit.sc.hp.com>
+References: <439vsl$e2g@hpscit.sc.hp.com>
+NNTP-Posting-Host: hpsmpk.lvld.hp.com
+X-Newsreader: TIN [version 1.2 PL1.4]
+
+
+Sorry for following my own post.  Julian was tooooo easy...once I thought
+of using it.  (ahem)
+:  31-DEC-94 1-JAN-95
+
+Julian converter based on 'jdex' (julian index) string.
+Actual usage would be based on the system 'date' format or input.
+
+BEGIN {
+ jdex="Jan000Feb031Mar062Apr090May121Jun151Jul182Aug212Sep243Oct273Nov304Dec334"
+# "date" | getline ndat
+ ndat="31-Dec-94"
+ split(ndat,a," ")
+ mday=substr(a[2],1,index(a[2],"-")-1)
+ mmon=substr(a[2],index(a[2],"-")+1,3)
+ print substr(jdex,index(jdex,mmon)+3,3)+mday
+}
+
+Gives 365 result...for the '31-Dec-94' example value of 'ndat'.
+
+
+

@@ -1,0 +1,13 @@
+
+# assuming your server is listening on port 8080 
+#     and you can redirect requests to port 8081
+#
+# By Jesse Myers
+
+# make a fifo
+mknod myfifo p
+
+# listen
+cat myfifo | nc -l -p 8081 | tee -a in | nc localhost 8080 | tee -a out > myfifo
+
+

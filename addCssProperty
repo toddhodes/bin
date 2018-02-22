@@ -1,0 +1,12 @@
+
+#for i in ./src/com/wavemarket/me/client/midp/polish/resources/*/*/polish.css
+for i in ./src/com/wavemarket/me/client/midp/polish/resources/polish.css
+do
+     replace "border-type: round-rect;" "border-type: round-rect;~    background-type: round-rect;" -- $i
+     cat $i | tr \~ "\\n"  > /tmp/foo
+     cp -f /tmp/foo $i
+done
+
+
+
+

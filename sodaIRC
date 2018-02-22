@@ -1,0 +1,2 @@
+export IRCNICK="ToddHodes"
+/usr/sww/bin/irc -c "&Soda"

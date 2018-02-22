@@ -1,0 +1,10 @@
+CVSROOT=ninja.cs.berkeley.edu:/disks/ninja/.CVS-ninja
+CVS_RSH=ssh
+export CVSROOT CVS_RSH
+
+# path for ninjarmic
+PATH=$PATH:/usr/local/java/bin:~/research/ninja/classpath/ninja/rmi/util
+CLASSPATH=$CLASSPATH:~/research/ninja/iceberg:~/research/ninja/
+
+export CLASSPATH PATH
+

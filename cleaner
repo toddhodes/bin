@@ -1,0 +1,115 @@
+#!/bin/csh -f
+
+#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+#But, what it does is copy all sorts of files into ~/.Trash, then you
+#can remove everything in .Trash which you find.
+#
+#Ways I've run it are:
+#
+#clean -r -t
+#
+#That means: Print out all emacs backup files, *.tmp, core and
+#deadletter files.  -r means recursively and -t means "test" (just
+#print out the file names.)
+#
+#clean -r would actually move the to ~/.Trash (my tentative "remove").
+#It also prints out filenames as it finds them.
+#
+#clean -a would, additionally, clear out LaTeX auxilary files and .o
+#files.
+#
+#I recommend trying it on a test directory first.  Of course, you can
+#edit the header lines to remove different sorts of "junk".
+#
+#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+set path = (/bin /usr/bin ~/bin/bin)
+# This program cleans out all sorts of junk files.
+# For each file, it outputs it's type, and deletes the file in the manner given
+#	by DELETE_CMD --- it's an argument to 'find'.
+# Arguments:
+# (none)	Just clear out files: *.tmp #* *~ core deadletter
+# -a		Also clear out LaTeX auxilary files (.dvi's, etc) and .o's
+# -p		Also clear out all .ps files
+# -x		On hostname 'games' also deletes all compiled executables and directories named "equation".
+#			(-x is used when creating backups on my NeXT)
+# -r		Recursively clean all subdirectories of current directory
+# -t		Test --- just print out filenames which would have been deleted.
+set noglob
+# -------------------------------------------------------------------------------------------------------
+#	THESE ARE THE VARIABLES YOU MAY WANT TO CHANGE
+# -------------------------------------------------------------------------------------------------------
+set clean	= "*.log *.tmp #* *~ .*~ core deadletter"
+set clean_a	= "$clean *.aux *.bbl *.blg *.dvi *.idx *.ilg *.ind *.lof *.o *.toc"
+set clean_p	= "$clean_a *.ps"
+set DIR_TRASH	= $HOME/.Trash
+set DELETE_CMD	= "-exec mv -f {} $DIR_TRASH ;"
+set IS_EXECUTABLE = $HOME/bin/bin/is_executable
+set IS_DATA	= $HOME/bin/bin/is_data
+# --------------------------------------------------------------------------------------------------------
+# Set up, process arguments
+# --------------------------------------------------------------------------------------------------------
+unset EXECUTABLES
+set FILE_TYPES	= "$clean"
+set PRUNE	= "-o -type d -exec test . != {} ; -prune"
+set DELETE	= "$DELETE_CMD"
+set FALSE	= "( -name a -name b )"
+set WRITEABLE	= "-exec test -w {} ;"
+
+top:
+if ($#argv > 0) then
+	switch ($1:q)
+	case -r:
+		set PRUNE = ""
+		shift
+		goto top
+	case -a:
+		set FILE_TYPES = "$clean_a"
+		shift
+		goto top
+	case -p:
+		set FILE_TYPES = "$clean_p"
+		shift
+		goto top
+	case -x:
+		set EXECUTABLES
+		shift
+		goto top
+	case -t
+		set DELETE = ""
+		shift
+		goto top
+	default:
+		echo "USAGE: $0 [-r] [-a] [-p] [-x] [-t]" 
+		exit
+	endsw
+endif
+
+# -------------------------------------------------------------------------------------------------------
+#	Construct name match argument to 'find', and execute the find
+# -------------------------------------------------------------------------------------------------------
+
+set FIND_STRING = "( $FALSE"
+foreach i ($FILE_TYPES)
+	set FIND_STRING = "$FIND_STRING -o -name $i"
+end
+set FIND_STRING = "$FIND_STRING )"
+
+find .	-type f $FIND_STRING $WRITEABLE -exec echo -n "plain	" \; -print $DELETE $PRUNE
+
+
+# -------------------------------------------------------------------------------------------------------
+# EXECUTE ONLY IF HOSTNAME IS games --- Code is dependent on:
+# (a) behavior of program "file"
+# (b) existence of is_executable (this uses the program "file")
+# -------------------------------------------------------------------------------------------------------
+
+if (($?EXECUTABLES) & (`hostname` == games) & (-x $IS_EXECUTABLE) & (-x $IS_DATA)) then
+ find .	$FALSE $PRUNE \
+	-o -type d -name equations -exec echo -n "eqn	" \; -print -prune $DELETE \
+	-o -type f -exec is_executable {} \; -exec echo -n "exec	" \; -print $DELETE \
+#	-o -type f -exec is_data {} \; -exec echo -n "data	" \; -print
+endif
+set noglob
+exit
+

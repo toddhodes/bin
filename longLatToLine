@@ -1,0 +1,10 @@
+
+
+echo "<LINE>"
+while read i
+do
+  lo=`echo $i | cut -d' ' -f1`
+  la=`echo $i | cut -d' ' -f2`
+  echo "  <LONGLAT long=\"$lo\" lat=\"$la\"/>"
+done
+echo "</LINE>"
