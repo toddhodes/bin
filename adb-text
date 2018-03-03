@@ -16,28 +16,27 @@ function enter() {
  adb shell input keyevent 66
 }
 
+
 case "$1" in
 "-c") 
- shift
- del
- adb shell input text "$@"
+  shift
+  del
+  adb shell input text "$@"
 ;;
 "-cr"|"-rc") 
- shift
- del
- adb shell input text "$@"
- enter
+  shift
+  del
+  adb shell input text "$@"
+  enter
 ;;
 "-r") 
- shift
- adb shell input text "$@"
- enter
+  enter
 ;;
 "") 
- echo "Usage: $0 [-r] text text ..."
+ echo "Usage: $0 [-r|-c|-cr|-rc] text ..."
 ;;
 *)
- adb shell input text "$@"
+  adb shell input text "$@"
 ;;
 esac
 

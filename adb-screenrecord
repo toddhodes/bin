@@ -1,0 +1,17 @@
+#!/bin/bash
+
+# trap ctrl-c and call ctrl_c()
+trap ctrl_c INT
+
+function ctrl_c() {
+   echo got ^c
+}
+
+echo "^C to stop recording"
+adb shell screenrecord /sdcard/demo.mp4 
+#read
+#kill -SIGINT $pid
+sleep 1
+echo "open demo.mp4"
+adb pull /sdcard/demo.mp4 .
+
