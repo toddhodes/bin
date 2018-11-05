@@ -1,0 +1,2 @@
+export PERL_LWP_SSL_VERIFY_HOSTNAME=0
+lwp-request -m GET "$@"

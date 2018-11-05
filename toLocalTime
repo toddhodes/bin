@@ -1,0 +1,1 @@
+node -e "var stdinBuffer = fs.readFileSync(0); var date = stdinBuffer.toString().trim(); console.log(new Date(date).toString());"

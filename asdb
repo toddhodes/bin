@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+count=`adb devices | awk -F '\t' 'NR>1 {if($1 != null) print NR}' | wc -l`
+dev_nr=1
+if [ $count -gt 1 ]; then
+  echo 'Devices:'
+  adb devices | awk -F '\t' 'NR>1 {if($1 != null) print NR-1 ") " $1}'
+  printf '\nSelect device (1): '
+  read dev_nr
+  if [ -e $dev_nr ]; then
+    dev_nr=1
+  elif [ $dev_nr -gt $count ] || [ $dev_nr -lt 1 ]; then
+    echo "Wrong device number!"
+    exit 1
+  fi
+fi
+line_nr=$dev_nr+1
+device=`adb devices | awk -F '\t' "NR==${line_nr} {print \\$1}"`
+adb -s $device $*

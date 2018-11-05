@@ -1,0 +1,10 @@
+#!/bin/bash
+
+if [[ $# -ne 1 ]]; then
+    echo "Usage: $0 <pod-name-regexp>"
+    exit 1
+fi
+
+# pod=$(kubectl get pods | grep $1 | awk '{print $1}'); kubectl logs --tail=100 -f $pod; while [ True ]; do echo; kubectl logs --tail=1 -f $pod; done
+pod=$(kubectl get pods | grep $1 | awk '{print $1}'); kubectl logs --tail=10000 -f $pod; while [ True ]; do echo; kubectl logs --tail=1 -f $pod; done
+

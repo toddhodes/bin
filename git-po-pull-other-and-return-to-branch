@@ -1,0 +1,16 @@
+#
+#
+#
+
+br=`git rev-parse --abbrev-ref HEAD`
+
+case "$1" in
+"") checkout=develop ;;
+*) checkout=$1 ;;
+esac
+
+echo "checkout $checkout then return to $br"
+git checkout $checkout
+git pull
+git checkout $br
+

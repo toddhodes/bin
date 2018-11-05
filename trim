@@ -1,0 +1,4 @@
+function trim {
+  echo "$1" | sed -e 's/^[[:space:]]*//g' -e 's/[[:space:]]*$//g'
+}
+trim "$@"
