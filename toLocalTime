@@ -19,9 +19,9 @@ for (var i = 0; i < split.length; i++) {
 	var endpart = split[i].replace(re, '\$4');
 	var dateString = new Date(datepart).toString();
 	//console.log('                    debug datepart', datepart)
-   if (!datepart || 0 === datepart.length || !datepart.includes("2018"))
-	   console.log(startpart);
-   else if (dateString.includes('Invalid'))
+   if (!datepart || 0 === datepart.length
+                 || !datepart.includes("2018")
+                 || dateString.includes('Invalid'))
 	   console.log(startpart);
    else 
 	   console.log(startpart, dateString, endpart)
