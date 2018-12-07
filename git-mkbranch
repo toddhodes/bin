@@ -1,11 +1,14 @@
 case "$1" in
-"") echo "Usage: $0 <feature/OTT-XXX> <develop|release>" ; exit 1 ;;
+"") echo "Usage: $0 <new-branch> [branch-point]" 
+    echo "          branch point defaults to current branch"
+    exit 1 ;;
 esac
 
 case "$2" in
-"") branchFrom="origin/develop" ;;
+"") branchFrom=`git rev-parse --abbrev-ref HEAD` ;;
 *) branchFrom=$2 ;;
 esac
+
 
 echo git branch $1 $branchFrom
 git branch $1 $branchFrom

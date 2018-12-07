@@ -1,11 +1,14 @@
+#!/bin/bash
 #
-#
+# helper for typing into the phone, and optionally
+# - clear the existing text first
+# - hit return
 #
 
 function del() {
  keys=""
  count=0
- while [ $count -lt 50 ]; do   
+ while [ $count -lt 32 ]; do   
    keys="67 $keys"
    ((count++))
  done

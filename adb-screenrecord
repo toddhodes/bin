@@ -8,10 +8,10 @@ function ctrl_c() {
 }
 
 echo "^C to stop recording"
-adb shell screenrecord /sdcard/demo.mp4 
+adb shell screenrecord /sdcard/screenrecording.mp4 
 #read
 #kill -SIGINT $pid
 sleep 1
 echo "open demo.mp4"
-adb pull /sdcard/demo.mp4 .
+adb pull /sdcard/screenrecording.mp4 .
 

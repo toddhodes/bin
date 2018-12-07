@@ -1,4 +1,10 @@
-f=screen_$(date +%Y%m%d_%H%M%S).png
-adb shell screencap -p | perl -pe 's/\x0D\x0A/\x0A/g' > $f
-echo $f
+f=screengrab_$(date +%Y%m%d_%H%M%S).png
 
+## was 
+#adb shell screencap -p | perl -pe 's/\x0D\x0A/\x0A/g' > $f
+
+adb shell screencap -p /sdcard/screenshot.png 
+adb pull /sdcard/screenshot.png 
+mv screenshot.png $f
+
+echo $f

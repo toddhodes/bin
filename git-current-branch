@@ -1,2 +1,4 @@
 git rev-parse --abbrev-ref HEAD
+#git branch | grep \* | cut -d ' ' -f2
+
 

@@ -1,1 +1,30 @@
-node -e "var stdinBuffer = fs.readFileSync(0); var date = stdinBuffer.toString().trim(); console.log(new Date(date).toString());"
+#
+# convert GMT dates to PST, including mulit-line support
+#
+# eg "foo 2018-12-06 21:20:05.020837 bar" -> "foo Thu Dec 06 2018 20:10:24 PST bar"
+#
+# NOT supported yet: "2018-12-05T23:25:11.344000+00:00",
+
+
+node -e "
+var stdinBuffer = fs.readFileSync(0);
+var all = stdinBuffer.toString().trim();
+
+var re = /(.*)(201.-[0-9]{2}-[0-9]{2})[ T]([0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]*)(.*)/;
+
+var split = all.split('\\n')
+for (var i = 0; i < split.length; i++) {
+	var datepart = split[i].replace(re, '\$2T\$3-0000').trim();
+	var startpart = split[i].replace(re, '\$1');
+	var endpart = split[i].replace(re, '\$4');
+	var dateString = new Date(datepart).toString();
+	//console.log('                    debug datepart', datepart)
+   if (!datepart || 0 === datepart.length || !datepart.includes("2018"))
+	   console.log(startpart);
+   else if (dateString.includes('Invalid'))
+	   console.log(startpart);
+   else 
+	   console.log(startpart, dateString, endpart)
+}
+" | sed 's/GMT-0800 (Pacific Standard Time)/PST/'
+

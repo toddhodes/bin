@@ -1,5 +1,8 @@
 #!/bin/bash
 
+echo "are you sure? will pull apk from phone, and create files"
+read
+
 adb shell pm list packages -f apn
 adb shell pm list packages -f com.verizon.familybase.companion
 

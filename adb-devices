@@ -1,17 +1,23 @@
 case "$@" in
 "-h") echo "Usage: -l lists serials, -h this message, noarg better description of all devices, anything else will be run on all attached devices" ;;
 "-l") adb devices |grep device | grep -v List| cut -f1  ;;
-"") for i in `adb devices |grep device | grep -v List| cut -f1`; 
+"") 
+for i in `adb devices |grep device | grep -v List| cut -f1`; 
    do 
-      /bin/echo -n "--- $i: "; 
-      adb -s $i shell getprop | grep "ro.product.manufacturer\|ro.product.brand\|ro.product.model\|ro.build.version.release\|ro.build.version.sdk" | cut -d: -f2 | tr -d \\\n\\\r ; echo 
-   done ;;
-*) for i in `adb devices |grep device | grep -v List| cut -f1`; 
+      /bin/echo -n "$i: "; 
+      adb -s $i shell getprop | grep "ro.product.manufacturer\|ro.product.brand\|ro.product.model\|ro.build.version.release\|ro.build.version.sdk" \
+			| cut -d: -f2 | tr -d \\\n\\\r ; echo 
+   done 
+;;
+*) 
+for i in `adb devices |grep device | grep -v List| cut -f1`; 
    do 
-      /bin/echo -n "--- $i: "; 
-      adb -s $i shell getprop | grep "ro.product.manufacturer\|ro.product.brand\|ro.product.model\|ro.build.version.release\|ro.build.version.sdk" | cut -d: -f2 | tr -d \\\n\\\r ; echo
+      /bin/echo -n "$i: "; 
+      adb -s $i shell getprop | grep "ro.product.manufacturer\|ro.product.brand\|ro.product.model\|ro.build.version.release\|ro.build.version.sdk" \
+			| cut -d: -f2 | tr -d \\\n\\\r ; echo
       echo adb -s $i "$@" ; 
       adb -s $i "$@"; 
    done
+;;
 esac
 

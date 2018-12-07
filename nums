@@ -1,4 +1,6 @@
-#!/usr/bin/perl
+echo use "{3..30}"
+echo or seq
+exit 
 
 $msg = "Usage: $0 [<start num>-]<max num>" ;
 
