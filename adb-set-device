@@ -26,7 +26,6 @@ case "$1" in
 [0-9])
    d=$1
    ser=`adb devices |grep device | grep -v List| cut -f1 | head -$d | tail -1`
-   echo export ANDROID_SERIAL=$ser
    shift
 
    desc=`adb -s $ser shell getprop ro.product.model`
@@ -34,7 +33,7 @@ case "$1" in
 
    case $1 in
    "") test ;;
-   *) (export ANDROID_SERIAL=$ser; echo "$@"; "$@") ;;
+   *) (export ANDROID_SERIAL=$ser; "$@") ;;
    esac
 ;;
 *)
@@ -51,9 +50,9 @@ case "$1" in
        exit 1
      fi
    fi
-   line_nr=$dev_nr+1
-   ser=`adb devices | awk -F '\t' "NR==${line_nr} {print \\$1}"`
-   (export ANDROID_SERIAL=$ser; echo "$@"; "$@")
+   line_nr=$((dev_nr+1))
+   ser=`adb devices | grep -v List | awk -F '\t' "NR==${line_nr} {print \\$1}"`
+   (export ANDROID_SERIAL=$ser; "$@")
 ;;
 esac
 
