@@ -1,0 +1,11 @@
+#!/bin/bash
+
+if [[ -n $1 ]]; then
+   branch=$1
+else
+   branch=master
+fi
+
+# show changes on current branch, relative to some other branch
+# the most common use case is relative to the branch this branch was created from
+git log --name-status `git merge-base HEAD ${branch}`..HEAD
